@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4-Bit Ripple Carry Adder (RCA) Step-by-Step Circuit Designer & Simulator</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+    }
+    .wire-off {
+      stroke: #334155;
+      stroke-width: 2.5;
+      fill: none;
+      transition: stroke 0.25s ease, filter 0.25s ease, stroke-width 0.25s ease;
+    }
+    .wire-on {
+      stroke: #10b981;
+      stroke-width: 3.2;
+      fill: none;
+      filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.65));
+      transition: stroke 0.25s ease, filter 0.25s ease, stroke-width 0.25s ease;
+    }
+    .wire-ripple {
+      stroke: #f59e0b;
+      stroke-width: 3.6;
+      fill: none;
+      stroke-dasharray: 6 4;
+      animation: dashFlow 0.6s linear infinite;
+      filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.85));
+    }
+    .wire-highlight {
+      stroke: #38bdf8;
+      stroke-width: 3.6;
+      fill: none;
+      stroke-dasharray: 7 4;
+      animation: dashFlow 0.55s linear infinite;
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.9));
+    }
+    .wire-pending {
+      stroke: #64748b;
+      stroke-width: 2.5;
+      fill: none;
+      stroke-dasharray: 4 4;
+    }
+    .wire-dim {
+      stroke: #1e293b;
+      stroke-width: 1.8;
+      fill: none;
+      opacity: 0.35;
+    }
+    @keyframes dashFlow {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+    .stage-card {
+      transition: all 0.25s ease;
+    }
+    .stage-active-ripple {
+      box-shadow: 0 0 0 2px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.35);
+    }
+    .stage-settled {
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.5);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-emerald-900/40 font-mono font-bold text-slate-950 text-lg">
+          4B
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            4-Bit Ripple Carry Adder — Practical Circuit Designer
+            <span class="hidden sm:inline-block text-xs font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Step-by-Step Lab</span>
+          </h1>
+          <p class="text-xs text-slate-400">Step-by-Step Gate Construction • 74LSxx Breadboard Pinout • Live Carry Ripple &amp; Delay</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex flex-wrap items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800" role="tablist">
+        <button id="tabBtnStepBuilder" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-emerald-500 text-slate-950 shadow">
+          1. Step-by-Step Circuit Design
+        </button>
+        <button id="tabBtnPractical" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800/60">
+          2. Practical Breadboard &amp; IC Pinout
+        </button>
+        <button id="tabBtnCircuit" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800/60">
+          3. 4-Stage Block Simulator
+        </button>
+        <button id="tabBtnDelay" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800/60">
+          4. Delay &amp; Timing Analysis
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="max-w-7xl w-full mx-auto px-4 py-5 flex-1 space-y-5">
+
+    <!-- Top Control Bar: Inputs, Presets, & Propagation Controls -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+
+        <!-- Binary Inputs A, B, Cin -->
+        <div class="lg:col-span-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">4-Bit Binary Inputs (Click Bits to Toggle)</span>
+            <span id="decimalEquationBadge" class="font-mono text-xs px-2.5 py-1 rounded-md bg-slate-950 border border-slate-800 text-emerald-400 font-semibold">
+              15 + 0 + 1 = 16
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Input A -->
+            <div class="bg-slate-950/90 border border-slate-800/90 rounded-xl p-2.5 flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-cyan-400 font-mono">Input A (A₃A₂A₁A₀)</div>
+                <div class="text-[11px] text-slate-400">Decimal: <span id="decA" class="font-mono text-white font-semibold">15</span></div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" data-bit-group="A" data-bit-index="3" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">1</span>
+                  <span class="text-[9px] opacity-60">A₃</span>
+                </button>
+                <button type="button" data-bit-group="A" data-bit-index="2" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">1</span>
+                  <span class="text-[9px] opacity-60">A₂</span>
+                </button>
+                <button type="button" data-bit-group="A" data-bit-index="1" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">1</span>
+                  <span class="text-[9px] opacity-60">A₁</span>
+                </button>
+                <button type="button" data-bit-group="A" data-bit-index="0" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">1</span>
+                  <span class="text-[9px] opacity-60">A₀</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Input B -->
+            <div class="bg-slate-950/90 border border-slate-800/90 rounded-xl p-2.5 flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-indigo-400 font-mono">Input B (B₃B₂B₁B₀)</div>
+                <div class="text-[11px] text-slate-400">Decimal: <span id="decB" class="font-mono text-white font-semibold">0</span></div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" data-bit-group="B" data-bit-index="3" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">0</span>
+                  <span class="text-[9px] opacity-60">B₃</span>
+                </button>
+                <button type="button" data-bit-group="B" data-bit-index="2" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">0</span>
+                  <span class="text-[9px] opacity-60">B₂</span>
+                </button>
+                <button type="button" data-bit-group="B" data-bit-index="1" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">0</span>
+                  <span class="text-[9px] opacity-60">B₁</span>
+                </button>
+                <button type="button" data-bit-group="B" data-bit-index="0" class="bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+                  <span class="bit-val">0</span>
+                  <span class="text-[9px] opacity-60">B₀</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cin + Presets -->
+        <div class="lg:col-span-3 flex flex-col justify-between gap-2.5">
+          <div class="flex items-center justify-between bg-slate-950/90 border border-slate-800/90 rounded-xl px-3 py-2">
+            <div>
+              <div class="text-xs font-bold text-amber-400 font-mono">Initial Carry (C₀ / Cᵢₙ)</div>
+              <div class="text-[11px] text-slate-400">LSB stage input carry</div>
+            </div>
+            <button id="btnCin" type="button" class="w-12 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center">
+              <span id="valCin">1</span>
+              <span class="text-[9px] opacity-75">C₀</span>
+            </button>
+          </div>
+
+          <div class="space-y-1">
+            <label for="presetSelect" class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Quick Study Presets</label>
+            <select id="presetSelect" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-medium focus:outline-none focus:border-emerald-500">
+              <option value="worst1">🔥 Worst-Case Ripple: A=1111 (15) + B=0000 (0) + C₀=1 (All 4 Stages Ripple)</option>
+              <option value="worst2">🔥 Full Ripple via B₀: A=1111 (15) + B=0001 (1) + C₀=0 (G₀ triggers 3-stage ripple)</option>
+              <option value="partial">⚡ Partial Ripple + Kill: A=0011 (3) + B=0001 (1) + C₀=0 (Stops at FA2)</option>
+              <option value="generate">🟢 Independent Generate: A=0101 (5) + B=0101 (5) + C₀=0 (Parallel carries)</option>
+              <option value="zero">✨ Zero Carry Delay: A=1010 (10) + B=0101 (5) + C₀=0 (No carry generated)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Simulation Playback & Gate Delay Controls -->
+        <div class="lg:col-span-4 bg-slate-950/90 border border-slate-800/90 rounded-xl p-3 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Carry Propagation Clock</span>
+            <span id="simStatusBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              t = 8 τg (Settled)
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button id="btnPlayPause" type="button" class="flex-1 py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow">
+              <span id="playIcon">▶</span> <span id="playText">Animate Ripple</span>
+            </button>
+            <button id="btnStep" type="button" class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all border border-slate-700">
+              Step +1 stage
+            </button>
+            <button id="btnResetSim" type="button" class="py-2 px-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-semibold text-xs transition-all border border-slate-800" title="Reset to t=0">
+              ↺
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 pt-1">
+            <label for="gateDelaySlider" class="text-[11px] text-slate-400 whitespace-nowrap">
+              Gate Delay (<span class="font-mono text-emerald-400">τg</span>): <span id="gateDelayLabel" class="font-mono font-bold text-white">5 ns</span>
+            </label>
+            <input id="gateDelaySlider" type="range" min="1" max="20" value="5" class="w-full accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: STEP-BY-STEP INTERACTIVE CIRCUIT DESIGNER (FROM 1 GATE TO 4-BIT)   -->
+    <!-- ========================================================================= -->
+    <section id="panelStepBuilder" class="space-y-5">
+
+      <!-- Stepper Progress Header -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">Interactive Construction Wizard (ধাপে ধাপে সার্কিট ডিজাইন)</span>
+            <h2 id="buildStepTitle" class="text-base sm:text-lg font-bold text-white mt-0.5">
+              Step 1: Half Adder #1 — Compute Propagate (Pᵢ) &amp; Generate (Gᵢ)
+            </h2>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnPrevBuildStep" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all">
+              ← Previous Step
+            </button>
+            <button id="btnNextBuildStep" type="button" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow transition-all">
+              Next Step →
+            </button>
+          </div>
+        </div>
+
+        <!-- 6 Step Pills -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2" id="buildStepPills">
+          <button type="button" data-build-step="1" class="build-step-pill text-left p-2.5 rounded-xl border transition-all">
+            <div class="text-[10px] font-mono uppercase text-emerald-400 font-bold">Step 1</div>
+            <div class="text-xs font-semibold text-white truncate">1. Half Adder #1 (Pᵢ, Gᵢ)</div>
+          </button>
+          <button type="button" data-build-step="2" class="build-step-pill text-left p-2.5 rounded-xl border transition-all">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Step 2</div>
+            <div class="text-xs font-semibold text-slate-300 truncate">2. Half Adder #2 (Sum Sᵢ)</div>
+          </button>
+          <button type="button" data-build-step="3" class="build-step-pill text-left p-2.5 rounded-xl border transition-all">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Step 3</div>
+            <div class="text-xs font-semibold text-slate-300 truncate">3. Carry Out (OR Gate)</div>
+          </button>
+          <button type="button" data-build-step="4" class="build-step-pill text-left p-2.5 rounded-xl border transition-all">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Step 4</div>
+            <div class="text-xs font-semibold text-slate-300 truncate">4. Complete 1-Bit FA Block</div>
+          </button>
+          <button type="button" data-build-step="5" class="build-step-pill text-left p-2.5 rounded-xl border transition-all">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Step 5</div>
+            <div class="text-xs font-semibold text-slate-300 truncate">5. Cascade 4 FA Blocks</div>
+          </button>
+          <button type="button" data-build-step="6" class="build-step-pill text-left p-2.5 rounded-xl border transition-all">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Step 6</div>
+            <div class="text-xs font-semibold text-slate-300 truncate">6. Full 20-Gate Schematic</div>
+          </button>
+        </div>
+
+        <!-- Stage selector when inspecting Steps 1-4 -->
+        <div id="singleStageSelectorBar" class="flex flex-wrap items-center justify-between gap-2 bg-slate-950/90 border border-slate-800/90 rounded-xl px-3.5 py-2">
+          <div class="text-xs text-slate-300">
+            <span class="font-semibold text-emerald-400">Inspecting Stage:</span> Choose which Full Adder stage's inputs (<span class="font-mono">Aᵢ, Bᵢ, Cᵢ</span>) and IC pin numbers to display on the schematic below:
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" data-select-fa="0" class="fa-select-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all">FA0 (LSB)</button>
+            <button type="button" data-select-fa="1" class="fa-select-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all">FA1</button>
+            <button type="button" data-select-fa="2" class="fa-select-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all">FA2</button>
+            <button type="button" data-select-fa="3" class="fa-select-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all">FA3 (MSB)</button>
+          </div>
+        </div>
+
+        <!-- Interactive Step-by-Step SVG Canvas -->
+        <div class="w-full overflow-x-auto">
+          <svg id="stepBuilderSvg" viewBox="0 0 960 400" class="w-full min-w-[720px] h-auto bg-slate-950 rounded-xl border border-slate-800 p-2 select-none"></svg>
+        </div>
+
+        <!-- Step Explanation Box (Bengali + Practical Wiring Guide) -->
+        <div id="stepExplanationBox" class="grid grid-cols-1 lg:grid-cols-12 gap-4 bg-slate-950/90 border border-slate-800 rounded-xl p-4">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: PRACTICAL BREADBOARD, IC PINOUT & WIRING CHECKLIST                 -->
+    <!-- ========================================================================= -->
+    <section id="panelPractical" class="hidden space-y-5">
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-mono uppercase text-emerald-400 font-bold">Hardware Lab Implementation Guide</span>
+            <h2 class="text-base sm:text-lg font-bold text-white">74LSxx / 74HCxx 14-Pin DIP IC Pinout &amp; Breadboard Wiring Checklist</h2>
+            <p class="text-xs text-slate-400">তুমি যদি ল্যাবে ব্রেডবোর্ডে অথবা Logisim / Proteus / Tinkercad-এ প্র্যাকটিক্যালি সার্কিটটি বানাও, তবে নিচের দুটি পদ্ধতির যেকোনো একটি ব্যবহার করতে পারো।</p>
+          </div>
+        </div>
+
+        <!-- Two Practical Approaches Comparison -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-950/90 border border-emerald-500/40 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Method A: Recommended for Project Objective</span>
+              <span class="text-xs font-mono text-slate-400">Total: 5 Basic Logic ICs</span>
+            </div>
+            <h3 class="text-sm font-bold text-white">গেট দিয়ে ৪টি Full Adder তৈরি (Using Basic Logic Gate ICs)</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              তোমার প্রজেক্টে যেহেতু বলা হয়েছে <em>"Construct a ripple carry adder using four full-adder stages"</em> এবং প্রতিটি স্টেজে ক্যারি কীভাবে প্রোপাগেট করে তা পর্যবেক্ষণ করতে, তাই বেসিক গেট IC দিয়ে ৪টি স্টেজ বানানো সবচেয়ে ভালো। এতে তুমি মধ্যবর্তী ক্যারি পিনগুলোতে (<span class="font-mono text-amber-300">C₁, C₂, C₃</span>) সরাসরি LED বা অসিলোস্কোপ প্রোব লাগাতে পারবে:
+            </p>
+            <ul class="text-xs font-mono text-slate-300 space-y-1 pt-1">
+              <li>• <strong class="text-cyan-300">2 × IC 74LS86</strong> (Quad 2-Input XOR Gate) — মোট ৮টি XOR গেট (প্রতি স্টেজে ২টি করে)</li>
+              <li>• <strong class="text-amber-300">2 × IC 74LS08</strong> (Quad 2-Input AND Gate) — মোট ৮টি AND গেট (প্রতি স্টেজে ২টি করে)</li>
+              <li>• <strong class="text-purple-300">1 × IC 74LS32</strong> (Quad 2-Input OR Gate) — মোট ৪টি OR গেট (প্রতি স্টেজে ১টি করে)</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Method B: Single-Chip Alternative</span>
+              <span class="text-xs font-mono text-slate-400">Total: 1 MSI Adder IC</span>
+            </div>
+            <h3 class="text-sm font-bold text-white">সিঙ্গেল চিপ 4-Bit Adder (Using IC 74LS83 or 74LS283)</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              তুমি যদি কম তার দিয়ে দ্রুত টেস্ট করতে চাও, তবে <strong>IC 74LS283</strong> (16-pin DIP) ব্যবহার করতে পারো যার ভেতরে ৪টি Full Adder আগে থেকেই কানেক্ট করা থাকে। তবে মনে রাখবে, 74LS283 চিপের ভেতর ইন্টারনাল ক্যারি পিন (<span class="font-mono">C₁, C₂, C₃</span>) বাইরে বের করা থাকে না।
+            </p>
+            <ul class="text-xs font-mono text-slate-300 space-y-1 pt-1">
+              <li>• <strong class="text-emerald-300">8 × SPST DIP Switches</strong> (with 10kΩ pull-down resistors) for <span class="font-mono">A₃..A₀, B₃..B₀, C₀</span></li>
+              <li>• <strong class="text-emerald-300">5 × 5mm LEDs + 330Ω Resistors</strong> for outputs <span class="font-mono">S₀, S₁, S₂, S₃, C₄</span></li>
+              <li>• <strong class="text-emerald-300">+5V Regulated DC Power Supply</strong> (Pin 14 = VCC, Pin 7 = GND)</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 14-Pin DIP IC Pinout SVG Diagram -->
+        <div class="space-y-2">
+          <h3 class="text-sm font-bold text-white">Standard 14-Pin DIP Pinout Diagram (IC 74LS86 XOR, 74LS08 AND, 74LS32 OR)</h3>
+          <p class="text-xs text-slate-400">চমৎকার বিষয় হলো <strong>74LS86 (XOR)</strong>, <strong>74LS08 (AND)</strong>, এবং <strong>74LS32 (OR)</strong>—এই তিনটি IC-এর পিনআউট হুবহু এক! প্রতিটি ১৪-পিন চিপের ভেতর ৪টি করে গেট থাকে:</p>
+          <div class="w-full overflow-x-auto">
+            <svg id="icPinoutSvg" viewBox="0 0 900 250" class="w-full min-w-[680px] h-auto bg-slate-950 rounded-xl border border-slate-800 p-3"></svg>
+          </div>
+        </div>
+
+        <!-- Complete Stage-by-Stage Pin-to-Pin Breadboard Wiring Table -->
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Exact Pin-to-Pin Breadboard Wiring Table (Check Off Each Wire As You Build!)</h3>
+              <p class="text-xs text-slate-400">নিচের টেবিল থেকে যেকোনো স্টেজ সিলেক্ট করে তার প্রতিটি তারের (Wire) পিন নম্বর দেখে ব্রেডবোর্ডে কানেক্ট করো এবং চেকবক্সে টিক দাও:</p>
+            </div>
+            <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <button type="button" data-wire-stage="all" class="wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-500 text-slate-950">All 4 Stages</button>
+              <button type="button" data-wire-stage="0" class="wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-slate-300 hover:bg-slate-800">FA0 (LSB)</button>
+              <button type="button" data-wire-stage="1" class="wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-slate-300 hover:bg-slate-800">FA1</button>
+              <button type="button" data-wire-stage="2" class="wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-slate-300 hover:bg-slate-800">FA2</button>
+              <button type="button" data-wire-stage="3" class="wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-slate-300 hover:bg-slate-800">FA3 (MSB)</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs font-mono">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+                  <th class="py-2.5 px-3">Done</th>
+                  <th class="py-2.5 px-3">Stage</th>
+                  <th class="py-2.5 px-3">Signal / Function</th>
+                  <th class="py-2.5 px-3">IC &amp; Gate Used</th>
+                  <th class="py-2.5 px-3">Input Pin 1 (From)</th>
+                  <th class="py-2.5 px-3">Input Pin 2 (From)</th>
+                  <th class="py-2.5 px-3">Output Pin (Connects To)</th>
+                  <th class="py-2.5 px-3 text-right">Live State</th>
+                </tr>
+              </thead>
+              <tbody id="breadboardWiringBody" class="divide-y divide-slate-800/60">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: 4-STAGE RIPPLE CARRY ADDER BLOCK DIAGRAM & LIVE PROPAGATION        -->
+    <!-- ========================================================================= -->
+    <section id="panelCircuit" class="hidden space-y-5">
+
+      <!-- Live Propagation Banner -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] text-slate-400 uppercase font-semibold">5-Bit Output Result (C₄ S₃S₂S₁S₀)</div>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="binaryResultDisplay" class="font-mono text-xl font-bold text-emerald-400 tracking-wider">1 0000₂</span>
+              <span id="decimalResultDisplay" class="text-xs font-mono text-slate-400">(= 16₁₀)</span>
+            </div>
+          </div>
+          <div id="overflowIndicator" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            Cout = 1
+          </div>
+        </div>
+
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5">
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Longest Carry Ripple Chain</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="rippleChainLength" class="font-mono text-lg font-bold text-amber-400">4 Stages (C₀ → C₄)</span>
+            <span id="rippleConditionText" class="text-[11px] font-mono text-slate-400">Worst-case path</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5">
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Actual Stabilization Time</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="actualDelayNs" class="font-mono text-lg font-bold text-cyan-400">40 ns (8 τg)</span>
+            <span class="text-[11px] font-mono text-slate-400">Worst-case: <span id="worstDelayNs">40 ns</span></span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5">
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Max Safe Clock Speed (f_max)</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="maxClockFreq" class="font-mono text-lg font-bold text-purple-400">25.0 MHz</span>
+            <span class="text-[11px] font-mono text-slate-400">1 / (8 × τg)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive SVG Schematic of 4 Full-Adder Stages -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              4-Stage Ripple Carry Adder Architecture (MSB ← LSB)
+              <span class="text-xs font-normal text-slate-400">(Click any Full Adder block to jump to its gate-level design)</span>
+            </h2>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block"></span> Logic 0</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_8px_#10b981]"></span> Logic 1</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_8px_#f59e0b]"></span> Active Carry Ripple</span>
+          </div>
+        </div>
+
+        <!-- Responsive SVG Diagram -->
+        <div class="w-full overflow-x-auto">
+          <svg id="rcaMainSvg" viewBox="0 0 980 340" class="w-full min-w-[760px] h-auto select-none bg-slate-950/90 rounded-xl border border-slate-800/80 p-2">
+            <defs>
+              <marker id="arrowOff" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569"/>
+              </marker>
+              <marker id="arrowOn" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+              </marker>
+              <marker id="arrowRipple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"/>
+              </marker>
+            </defs>
+            <g id="svgDynamicContent"></g>
+          </svg>
+        </div>
+
+        <!-- 4 Stage Cards with Equations, Propagation Status & Timing -->
+        <div id="stageCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1"></div>
+      </div>
+
+      <!-- Step-by-Step Ripple Propagation Log Table -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">Carry Propagation Trace &amp; Stage-by-Stage State Table</h3>
+            <p class="text-xs text-slate-400">Shows how each Full Adder stage computes Propagate (<span class="font-mono text-cyan-300">Pᵢ = Aᵢ ⊕ Bᵢ</span>), Generate (<span class="font-mono text-emerald-300">Gᵢ = Aᵢ · Bᵢ</span>), Sum (<span class="font-mono text-white">Sᵢ = Pᵢ ⊕ Cᵢ</span>), and Carry-Out (<span class="font-mono text-amber-300">Cᵢ₊₁ = Gᵢ + Pᵢ·Cᵢ</span>)</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/60 font-mono">
+                <th class="py-2.5 px-3">Stage</th>
+                <th class="py-2.5 px-3">Inputs (Aᵢ, Bᵢ, Cᵢ)</th>
+                <th class="py-2.5 px-3">Pᵢ = Aᵢ ⊕ Bᵢ</th>
+                <th class="py-2.5 px-3">Gᵢ = Aᵢ · Bᵢ</th>
+                <th class="py-2.5 px-3">Carry Action</th>
+                <th class="py-2.5 px-3">Outputs (Sᵢ, Cᵢ₊₁)</th>
+                <th class="py-2.5 px-3 text-right">Stage Valid Time</th>
+              </tr>
+            </thead>
+            <tbody id="propagationTableBody" class="divide-y divide-slate-800/60 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: DELAY & TIMING WAVEFORM ANALYSIS                                   -->
+    <!-- ========================================================================= -->
+    <section id="panelDelay" class="hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Waveform / Timing Diagram -->
+        <div class="lg:col-span-7 bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+          <div>
+            <h2 class="text-base font-bold text-white">Signal Stabilization &amp; Glitch Timing Diagram</h2>
+            <p class="text-xs text-slate-400">Shows when each Carry (<span class="font-mono text-amber-300">C₁..C₄</span>) and Sum (<span class="font-mono text-emerald-300">S₀..S₃</span>) transitions from unstable/waiting (amber) to its final valid logic level.</p>
+          </div>
+          <div class="w-full overflow-x-auto">
+            <svg id="waveformSvg" viewBox="0 0 680 360" class="w-full min-w-[540px] h-auto bg-slate-950 rounded-xl border border-slate-800 p-2"></svg>
+          </div>
+        </div>
+
+        <!-- Scaling Comparison: RCA vs CLA -->
+        <div class="lg:col-span-5 bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+          <div>
+            <h2 class="text-base font-bold text-white">Effect of Carry Propagation on N-Bit Adder Delay</h2>
+            <p class="text-xs text-slate-400">Why Ripple Carry Adders become a bottleneck for 16-bit, 32-bit, and 64-bit ALUs (<span class="font-mono text-amber-300">T_RCA = 2n·τg</span> vs. Carry Lookahead <span class="font-mono text-emerald-300">O(log n)</span>).</p>
+          </div>
+
+          <div class="w-full overflow-x-auto">
+            <svg id="delayComparisonSvg" viewBox="0 0 460 230" class="w-full h-auto bg-slate-950 rounded-xl border border-slate-800 p-2"></svg>
+          </div>
+
+          <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
+            <div class="font-semibold text-white">Mathematical Delay Breakdown (Current τg = <span id="formulaTauLabel" class="font-mono text-emerald-400">5 ns</span>):</div>
+            <ul class="space-y-1.5 text-slate-300 font-mono text-[11px]">
+              <li>• <span class="text-cyan-300">Pᵢ = Aᵢ ⊕ Bᵢ</span> and <span class="text-cyan-300">Gᵢ = Aᵢ · Bᵢ</span>: Ready at <span class="text-white font-bold">1 τg</span> (all stages in parallel)</li>
+              <li>• <span class="text-amber-300">Carry Cᵢ₊₁ = Gᵢ + (Pᵢ · Cᵢ)</span>: Adds <span class="text-white font-bold">+2 τg</span> per stage (AND + OR gate)</li>
+              <li>• <span class="text-emerald-300">4-Bit Worst-Case Carry (C₄)</span>: <span id="eqCoutDelay" class="text-white font-bold">2 × 4 × 5 ns = 40 ns (8 τg)</span></li>
+              <li>• <span class="text-purple-300">32-Bit RCA Worst-Case Delay</span>: <span id="eq32BitDelay" class="text-white font-bold">2 × 32 × 5 ns = 320 ns (64 τg)</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // --- Application State ---
+    const state = {
+      A: [1, 1, 1, 1], // [A0, A1, A2, A3] where index 0 is LSB
+      B: [0, 0, 0, 0], // [B0, B1, B2, B3]
+      Cin: 1,
+      tauNs: 5,        // Gate delay in ns
+      simStep: 4,      // 0..4
+      isPlaying: false,
+      timerId: null,
+      selectedFA: 0,
+      buildStep: 1,    // 1..6 in Step-by-Step Circuit Designer
+      wireStageFilter: 'all',
+      checkedWires: {},
+      activeTab: 'stepBuilder'
+    };
+
+    // Pin mapping metadata for 74LSxx practical implementation
+    // U1 = 74LS86 #1 (FA0, FA1 XORs), U2 = 74LS86 #2 (FA2, FA3 XORs)
+    // U3 = 74LS08 #1 (FA0, FA1 ANDs), U4 = 74LS08 #2 (FA2, FA3 ANDs)
+    // U5 = 74LS32 #1 (FA0..FA3 ORs)
+    const stagePinMap = {
+      0: {
+        xor1: { ic: 'U1: 74LS86 #1 (Gate A)', p1: 'Pin 1 (A₀)', p2: 'Pin 2 (B₀)', out: 'Pin 3 (P₀)' },
+        and2: { ic: 'U3: 74LS08 #1 (Gate A)', p1: 'Pin 1 (A₀)', p2: 'Pin 2 (B₀)', out: 'Pin 3 (G₀)' },
+        xor2: { ic: 'U1: 74LS86 #1 (Gate B)', p1: 'Pin 4 (from U1 Pin 3)', p2: 'Pin 5 (C₀ Switch)', out: 'Pin 6 → LED S₀' },
+        and1: { ic: 'U3: 74LS08 #1 (Gate B)', p1: 'Pin 4 (from U1 Pin 3)', p2: 'Pin 5 (C₀ Switch)', out: 'Pin 6 (P₀·C₀)' },
+        or1:  { ic: 'U5: 74LS32 (Gate A)',    p1: 'Pin 1 (from U3 Pin 6)', p2: 'Pin 2 (from U3 Pin 3)', out: 'Pin 3 → C₁ (to FA1)' }
+      },
+      1: {
+        xor1: { ic: 'U1: 74LS86 #1 (Gate C)', p1: 'Pin 9 (A₁)', p2: 'Pin 10 (B₁)', out: 'Pin 8 (P₁)' },
+        and2: { ic: 'U3: 74LS08 #1 (Gate C)', p1: 'Pin 9 (A₁)', p2: 'Pin 10 (B₁)', out: 'Pin 8 (G₁)' },
+        xor2: { ic: 'U1: 74LS86 #1 (Gate D)', p1: 'Pin 12 (from U1 Pin 8)', p2: 'Pin 13 (C₁ from U5 Pin 3)', out: 'Pin 11 → LED S₁' },
+        and1: { ic: 'U3: 74LS08 #1 (Gate D)', p1: 'Pin 12 (from U1 Pin 8)', p2: 'Pin 13 (C₁ from U5 Pin 3)', out: 'Pin 11 (P₁·C₁)' },
+        or1:  { ic: 'U5: 74LS32 (Gate B)',    p1: 'Pin 4 (from U3 Pin 11)', p2: 'Pin 5 (from U3 Pin 8)', out: 'Pin 6 → C₂ (to FA2)' }
+      },
+      2: {
+        xor1: { ic: 'U2: 74LS86 #2 (Gate A)', p1: 'Pin 1 (A₂)', p2: 'Pin 2 (B₂)', out: 'Pin 3 (P₂)' },
+        and2: { ic: 'U4: 74LS08 #2 (Gate A)', p1: 'Pin 1 (A₂)', p2: 'Pin 2 (B₂)', out: 'Pin 3 (G₂)' },
+        xor2: { ic: 'U2: 74LS86 #2 (Gate B)', p1: 'Pin 4 (from U2 Pin 3)', p2: 'Pin 5 (C₂ from U5 Pin 6)', out: 'Pin 6 → LED S₂' },
+        and1: { ic: 'U4: 74LS08 #2 (Gate B)', p1: 'Pin 4 (from U2 Pin 3)', p2: 'Pin 5 (C₂ from U5 Pin 6)', out: 'Pin 6 (P₂·C₂)' },
+        or1:  { ic: 'U5: 74LS32 (Gate C)',    p1: 'Pin 9 (from U4 Pin 6)', p2: 'Pin 10 (from U4 Pin 3)', out: 'Pin 8 → C₃ (to FA3)' }
+      },
+      3: {
+        xor1: { ic: 'U2: 74LS86 #2 (Gate C)', p1: 'Pin 9 (A₃)', p2: 'Pin 10 (B₃)', out: 'Pin 8 (P₃)' },
+        and2: { ic: 'U4: 74LS08 #2 (Gate C)', p1: 'Pin 9 (A₃)', p2: 'Pin 10 (B₃)', out: 'Pin 8 (G₃)' },
+        xor2: { ic: 'U2: 74LS86 #2 (Gate D)', p1: 'Pin 12 (from U2 Pin 8)', p2: 'Pin 13 (C₃ from U5 Pin 8)', out: 'Pin 11 → LED S₃' },
+        and1: { ic: 'U4: 74LS08 #2 (Gate D)', p1: 'Pin 12 (from U2 Pin 8)', p2: 'Pin 13 (C₃ from U5 Pin 8)', out: 'Pin 11 (P₃·C₃)' },
+        or1:  { ic: 'U5: 74LS32 (Gate D)',    p1: 'Pin 12 (from U4 Pin 11)', p2: 'Pin 13 (from U4 Pin 8)', out: 'Pin 11 → LED C₄ (Cout)' }
+      }
+    };
+
+    // --- Helper: Draw Standard IEEE Logic Gate Symbols in SVG ---
+    function drawXorGate(x, y, label, sublabel, strokeColor, activeFill) {
+      // x, y is top-left of 76x48 bounding box
+      const bg = activeFill ? '#112233' : '#1e293b';
+      return `
+        <g transform="translate(${x}, ${y})">
+          <!-- Back curved shield of XOR -->
+          <path d="M 2,4 Q 16,24 2,44" fill="none" stroke="${strokeColor}" stroke-width="2.4" stroke-linecap="round"/>
+          <!-- Main XOR body -->
+          <path d="M 10,4 L 36,4 C 54,4 68,14 74,24 C 68,34 54,44 36,44 L 10,44 Q 24,24 10,4 Z" fill="${bg}" stroke="${strokeColor}" stroke-width="2.2" stroke-linejoin="round"/>
+          <text x="39" y="21" text-anchor="middle" fill="#ffffff" font-family="Inter" font-size="10" font-weight="bold">${label}</text>
+          <text x="39" y="34" text-anchor="middle" fill="${strokeColor}" font-family="JetBrains Mono" font-size="9" font-weight="bold">${sublabel}</text>
+        </g>
+      `;
+    }
+
+    function drawAndGate(x, y, label, sublabel, strokeColor, activeFill) {
+      const bg = activeFill ? '#112233' : '#1e293b';
+      return `
+        <g transform="translate(${x}, ${y})">
+          <path d="M 8,4 L 44,4 A 24,20 0 0 1 44,44 L 8,44 Z" fill="${bg}" stroke="${strokeColor}" stroke-width="2.2" stroke-linejoin="round"/>
+          <text x="36" y="21" text-anchor="middle" fill="#ffffff" font-family="Inter" font-size="10" font-weight="bold">${label}</text>
+          <text x="36" y="34" text-anchor="middle" fill="${strokeColor}" font-family="JetBrains Mono" font-size="9" font-weight="bold">${sublabel}</text>
+        </g>
+      `;
+    }
+
+    function drawOrGate(x, y, label, sublabel, strokeColor, activeFill) {
+      const bg = activeFill ? '#112233' : '#1e293b';
+      return `
+        <g transform="translate(${x}, ${y})">
+          <path d="M 6,4 L 34,4 C 52,4 66,14 72,24 C 66,34 52,44 34,44 L 6,44 Q 20,24 6,4 Z" fill="${bg}" stroke="${strokeColor}" stroke-width="2.2" stroke-linejoin="round"/>
+          <text x="38" y="21" text-anchor="middle" fill="#ffffff" font-family="Inter" font-size="10" font-weight="bold">${label}</text>
+          <text x="38" y="34" text-anchor="middle" fill="${strokeColor}" font-family="JetBrains Mono" font-size="9" font-weight="bold">${sublabel}</text>
+        </g>
+      `;
+    }
+
+    // --- Compute Full Adder Stages & Propagation Analysis ---
+    function computeCircuit() {
+      const stages = [];
+      let cIn = state.Cin;
+
+      for (let i = 0; i < 4; i++) {
+        const a = state.A[i];
+        const b = state.B[i];
+        const p = a ^ b;
+        const g = a & b;
+        const k = (a === 0 && b === 0) ? 1 : 0;
+        const pAndCin = p & cIn;
+        const s = p ^ cIn;
+        const cOut = g | pAndCin;
+
+        stages.push({
+          index: i,
+          a,
+          b,
+          cIn,
+          p,
+          g,
+          k,
+          pAndCin,
+          s,
+          cOut,
+          mode: g ? 'GENERATE' : (p ? 'PROPAGATE' : 'KILL')
+        });
+
+        cIn = cOut;
+      }
+
+      const carryValidTau = [0, 0, 0, 0, 0];
+      carryValidTau[0] = 0;
+
+      let maxRippleChain = 0;
+      let currentChain = 0;
+
+      for (let i = 0; i < 4; i++) {
+        const st = stages[i];
+        if (st.p === 1) {
+          carryValidTau[i + 1] = Math.max(2, carryValidTau[i] + 2);
+          if (st.cIn === 1) {
+            currentChain += 1;
+            if (currentChain > maxRippleChain) maxRippleChain = currentChain;
+          } else {
+            currentChain = 0;
+          }
+        } else {
+          carryValidTau[i + 1] = 2;
+          currentChain = (st.g === 1) ? 1 : 0;
+          if (currentChain > maxRippleChain) maxRippleChain = currentChain;
+        }
+        st.cInValidTau = carryValidTau[i];
+        st.cOutValidTau = carryValidTau[i + 1];
+        st.sumValidTau = Math.max(2, carryValidTau[i] + 1);
+      }
+
+      const actualMaxTau = Math.max(
+        carryValidTau[4],
+        stages[0].sumValidTau,
+        stages[1].sumValidTau,
+        stages[2].sumValidTau,
+        stages[3].sumValidTau
+      );
+
+      return {
+        stages,
+        carryValidTau,
+        maxRippleChain,
+        actualMaxTau
+      };
+    }
+
+    // --- Master Render Function ---
+    function renderAll() {
+      const circuit = computeCircuit();
+      renderTopControls(circuit);
+      renderStepBuilder(circuit);
+      renderPracticalPinoutAndTable(circuit);
+      renderMainBlockSvg(circuit);
+      renderStageCards(circuit);
+      renderPropagationTable(circuit);
+      renderDelayAnalysis(circuit);
+    }
+
+    function renderTopControls(circuit) {
+      document.querySelectorAll('.bit-btn').forEach(btn => {
+        const group = btn.getAttribute('data-bit-group');
+        const idx = parseInt(btn.getAttribute('data-bit-index'), 10);
+        const val = state[group][idx];
+        btn.querySelector('.bit-val').textContent = val;
+        if (val === 1) {
+          btn.className = 'bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.25)]';
+        } else {
+          btn.className = 'bit-btn w-8 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500';
+        }
+      });
+
+      const btnCin = document.getElementById('btnCin');
+      document.getElementById('valCin').textContent = state.Cin;
+      if (state.Cin === 1) {
+        btnCin.className = 'w-12 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.25)]';
+      } else {
+        btnCin.className = 'w-12 h-9 rounded-lg font-mono font-bold text-sm border transition-all flex flex-col items-center justify-center bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500';
+      }
+
+      const decA = state.A[0] + state.A[1] * 2 + state.A[2] * 4 + state.A[3] * 8;
+      const decB = state.B[0] + state.B[1] * 2 + state.B[2] * 4 + state.B[3] * 8;
+      const total = decA + decB + state.Cin;
+
+      document.getElementById('decA').textContent = decA;
+      document.getElementById('decB').textContent = decB;
+      document.getElementById('decimalEquationBadge').textContent = `${decA} + ${decB} + ${state.Cin} = ${total}`;
+
+      const sBits = circuit.stages.map(s => s.s).reverse().join('');
+      const c4 = circuit.stages[3].cOut;
+      document.getElementById('binaryResultDisplay').textContent = `${c4} ${sBits}₂`;
+      document.getElementById('decimalResultDisplay').textContent = `(= ${total}₁₀)`;
+
+      const overflowEl = document.getElementById('overflowIndicator');
+      overflowEl.textContent = `C₄ (Cout) = ${c4}`;
+      overflowEl.className = c4 === 1
+        ? 'px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40'
+        : 'px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700';
+
+      document.getElementById('rippleChainLength').textContent =
+        circuit.maxRippleChain === 4
+          ? '4 Stages (C₀ → C₄)'
+          : `${circuit.maxRippleChain} Stage${circuit.maxRippleChain === 1 ? '' : 's'}`;
+
+      document.getElementById('rippleConditionText').textContent =
+        circuit.maxRippleChain === 4
+          ? 'Maximum critical path'
+          : (circuit.maxRippleChain === 0 ? 'No carry ripple' : 'Partial carry chain');
+
+      const worstNs = 8 * state.tauNs;
+      const actualNs = circuit.actualMaxTau * state.tauNs;
+      document.getElementById('actualDelayNs').textContent = `${actualNs} ns (${circuit.actualMaxTau} τg)`;
+      document.getElementById('worstDelayNs').textContent = `${worstNs} ns`;
+
+      const fMaxMhz = (1000 / worstNs).toFixed(1);
+      document.getElementById('maxClockFreq').textContent = `${fMaxMhz} MHz`;
+      document.getElementById('gateDelayLabel').textContent = `${state.tauNs} ns`;
+
+      const simTau = state.simStep * 2;
+      const simNs = simTau * state.tauNs;
+      const simBadge = document.getElementById('simStatusBadge');
+      if (state.simStep < 4) {
+        simBadge.textContent = `t = ${simTau} τg (${simNs} ns) • Stage FA${state.simStep} Rippling`;
+        simBadge.className = 'text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse';
+      } else {
+        simBadge.textContent = `t = 8 τg (${worstNs} ns) • All 4 Stages Settled`;
+        simBadge.className = 'text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      }
+
+      document.getElementById('playIcon').textContent = state.isPlaying ? '⏸' : '▶';
+      document.getElementById('playText').textContent = state.isPlaying ? 'Pause Ripple' : 'Animate Ripple';
+    }
+
+    // =========================================================================
+    // TAB 1 RENDERER: STEP-BY-STEP CIRCUIT DESIGNER (STEPS 1 TO 6)
+    // =========================================================================
+    function renderStepBuilder(circuit) {
+      const step = state.buildStep;
+
+      // Update Step Pills
+      document.querySelectorAll('.build-step-pill').forEach(btn => {
+        const s = parseInt(btn.getAttribute('data-build-step'), 10);
+        if (s === step) {
+          btn.className = 'build-step-pill text-left p-2.5 rounded-xl border transition-all bg-emerald-500/15 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.2)]';
+          btn.children[0].className = 'text-[10px] font-mono uppercase text-emerald-400 font-bold';
+          btn.children[1].className = 'text-xs font-bold text-white truncate';
+        } else if (s < step) {
+          btn.className = 'build-step-pill text-left p-2.5 rounded-xl border transition-all bg-slate-900/90 border-emerald-500/30 hover:border-emerald-500/60';
+          btn.children[0].className = 'text-[10px] font-mono uppercase text-emerald-400/80 font-bold';
+          btn.children[1].className = 'text-xs font-semibold text-slate-200 truncate';
+        } else {
+          btn.className = 'build-step-pill text-left p-2.5 rounded-xl border transition-all bg-slate-950/60 border-slate-800 hover:border-slate-700';
+          btn.children[0].className = 'text-[10px] font-mono uppercase text-slate-500 font-bold';
+          btn.children[1].className = 'text-xs font-semibold text-slate-400 truncate';
+        }
+      });
+
+      // Update FA0..FA3 selector bar visibility & active pill
+      const singleBar = document.getElementById('singleStageSelectorBar');
+      if (step <= 4) {
+        singleBar.classList.remove('hidden');
+      } else {
+        singleBar.classList.add('hidden');
+      }
+
+      document.querySelectorAll('.fa-select-btn').forEach(btn => {
+        const idx = parseInt(btn.getAttribute('data-select-fa'), 10);
+        if (idx === state.selectedFA) {
+          btn.className = 'fa-select-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all bg-emerald-500 text-slate-950 shadow';
+        } else {
+          btn.className = 'fa-select-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all text-slate-300 hover:bg-slate-800';
+        }
+      });
+
+      const stepTitles = {
+        1: `Step 1 of 6: Half Adder #1 — Connect A${state.selectedFA} & B${state.selectedFA} to XOR1 (Propagate) and AND2 (Generate)`,
+        2: `Step 2 of 6: Half Adder #2 — Connect P${state.selectedFA} & Incoming Carry C${state.selectedFA} to XOR2 (Sum S${state.selectedFA}) and AND1`,
+        3: `Step 3 of 6: Carry-Out Stage — Combine (P${state.selectedFA}·C${state.selectedFA}) and G${state.selectedFA} in OR Gate to Produce C${state.selectedFA + 1}`,
+        4: `Step 4 of 6: Complete 1-Bit Full Adder Module (FA${state.selectedFA}) Ready for Cascading`,
+        5: `Step 5 of 6: Daisy-Chain 4 Full Adder Stages (Connect C₁ → FA1, C₂ → FA2, C₃ → FA3)`,
+        6: `Step 6 of 6: Complete 20-Gate 4-Bit Ripple Carry Adder Schematic (All 4 Stages Inside View)`
+      };
+      document.getElementById('buildStepTitle').textContent = stepTitles[step];
+
+      const svg = document.getElementById('stepBuilderSvg');
+      const expBox = document.getElementById('stepExplanationBox');
+
+      if (step <= 4) {
+        renderSingleStageStepSvg(svg, expBox, circuit, step);
+      } else if (step === 5) {
+        renderCascadeStep5Svg(svg, expBox, circuit);
+      } else {
+        renderFull20GateStep6Svg(svg, expBox, circuit);
+      }
+    }
+
+    function renderSingleStageStepSvg(svg, expBox, circuit, step) {
+      const i = state.selectedFA;
+      const st = circuit.stages[i];
+      const pins = stagePinMap[i];
+
+      const wState = (val, minStep, exactStep) => {
+        if (step < minStep) return 'wire-dim';
+        if (step === exactStep) return 'wire-highlight';
+        return val === 1 ? 'wire-on' : 'wire-off';
+      };
+
+      const opGroup = minStep => (step >= minStep ? '1' : '0.22');
+
+      let html = `
+        <!-- Background Grid & Stage Header -->
+        <rect x="10" y="10" width="940" height="380" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1"/>
+        <text x="28" y="34" fill="#94a3b8" font-family="JetBrains Mono" font-size="11" font-weight="bold">
+          BUILDING STAGE FA${i} • ${pins.xor1.ic.split('(')[0]} / ${pins.and2.ic.split('(')[0]} / ${pins.or1.ic.split('(')[0]}
+        </text>
+
+        <!-- Dashed Module Box shown prominently in Step 4 -->
+        <rect x="145" y="45" width="645" height="325" rx="16" fill="none" stroke="${step === 4 ? '#10b981' : '#1e293b'}" stroke-width="${step === 4 ? '2.5' : '1.2'}" stroke-dasharray="8 5"/>
+        <text x="775" y="66" text-anchor="end" fill="${step === 4 ? '#34d399' : '#475569'}" font-family="JetBrains Mono" font-size="11" font-weight="bold">
+          FULL ADDER FA${i} INTERNAL CIRCUIT (5 GATES)
+        </text>
+
+        <!-- ==================== STEP 1: INPUTS A_i, B_i, XOR1, AND2 ==================== -->
+        <g opacity="${opGroup(1)}">
+          <!-- Input A_i Box -->
+          <rect x="26" y="72" width="84" height="36" rx="8" fill="#0f172a" stroke="${st.a ? '#10b981' : '#38bdf8'}" stroke-width="2"/>
+          <text x="68" y="95" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="14" font-weight="bold">A${i} = ${st.a}</text>
+
+          <!-- Input B_i Box -->
+          <rect x="26" y="136" width="84" height="36" rx="8" fill="#0f172a" stroke="${st.b ? '#10b981' : '#818cf8'}" stroke-width="2"/>
+          <text x="68" y="159" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="14" font-weight="bold">B${i} = ${st.b}</text>
+
+          <!-- Wires from A_i and B_i to XOR1 -->
+          <path d="M 110,90 L 250,90" class="${wState(st.a, 1, 1)}"/>
+          <path d="M 110,154 L 195,154 L 195,114 L 250,114" class="${wState(st.b, 1, 1)}"/>
+
+          <!-- Solder Junction Dots & Tap Wires down to AND2 -->
+          <circle cx="165" cy="90" r="4.5" fill="#38bdf8"/>
+          <path d="M 165,90 L 165,294 L 250,294" class="${wState(st.a, 1, 1)}"/>
+
+          <circle cx="195" cy="154" r="4.5" fill="#818cf8"/>
+          <path d="M 195,154 L 195,318 L 250,318" class="${wState(st.b, 1, 1)}"/>
+
+          <!-- XOR1 Gate (Computes P_i) -->
+          ${drawXorGate(246, 78, 'XOR 1', `P${i}=${st.p}`, step === 1 ? '#38bdf8' : '#06b6d4', step === 1)}
+          <text x="284" y="70" text-anchor="middle" fill="#38bdf8" font-family="JetBrains Mono" font-size="10">${pins.xor1.ic}</text>
+          <text x="235" y="85" text-anchor="end" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">${pins.xor1.p1.split(' ')[1]}</text>
+          <text x="235" y="122" text-anchor="end" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">${pins.xor1.p2.split(' ')[1]}</text>
+          <text x="334" y="96" fill="#38bdf8" font-family="JetBrains Mono" font-size="9" font-weight="bold">P${i}=${st.p}</text>
+
+          <!-- AND2 Gate (Computes G_i) -->
+          ${drawAndGate(246, 282, 'AND 2', `G${i}=${st.g}`, step === 1 ? '#38bdf8' : '#a855f7', step === 1)}
+          <text x="284" y="274" text-anchor="middle" fill="#c084fc" font-family="JetBrains Mono" font-size="10">${pins.and2.ic}</text>
+          <text x="330" y="302" fill="#c084fc" font-family="JetBrains Mono" font-size="9" font-weight="bold">G${i}=${st.g}</text>
+        </g>
+
+        <!-- ==================== STEP 2: INPUT C_i, XOR2 (SUM), AND1 ==================== -->
+        <g opacity="${opGroup(2)}">
+          <!-- Input C_i Box -->
+          <rect x="26" y="212" width="84" height="36" rx="8" fill="#0f172a" stroke="${st.cIn ? '#f59e0b' : '#64748b'}" stroke-width="2"/>
+          <text x="68" y="235" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="14" font-weight="bold">C${i} = ${st.cIn}</text>
+
+          <!-- Wire from XOR1 (P_i) to XOR2 and branch to AND1 -->
+          <path d="M 320,102 L 500,102" class="${wState(st.p, 2, 2)}"/>
+          <circle cx="425" cy="102" r="4.5" fill="#38bdf8"/>
+          <path d="M 425,102 L 425,196 L 500,196" class="${wState(st.p, 2, 2)}"/>
+
+          <!-- Wire from C_i to XOR2 and branch to AND1 -->
+          <path d="M 110,230 L 455,230 L 455,126 L 500,126" class="${wState(st.cIn, 2, 2)}"/>
+          <circle cx="455" cy="220" r="4.5" fill="#fbbf24"/>
+          <path d="M 455,220 L 500,220" class="${wState(st.cIn, 2, 2)}"/>
+
+          <!-- XOR2 Gate (Computes Sum S_i) -->
+          ${drawXorGate(496, 90, 'XOR 2', `S${i}=${st.s}`, step === 2 ? '#38bdf8' : '#10b981', step === 2)}
+          <text x="534" y="82" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono" font-size="10">${pins.xor2.ic}</text>
+
+          <!-- Sum Output Wire & LED Box -->
+          <path d="M 570,114 L 815,114" class="${wState(st.s, 2, 2)}"/>
+          <rect x="815" y="92" width="118" height="44" rx="10" fill="#0f172a" stroke="${st.s ? '#10b981' : '#334155'}" stroke-width="2.2"/>
+          <circle cx="835" cy="114" r="7" fill="${st.s ? '#10b981' : '#1e293b'}" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="882" y="119" text-anchor="middle" fill="${st.s ? '#34d399' : '#e2e8f0'}" font-family="JetBrains Mono" font-size="14" font-weight="bold">S${i} = ${st.s}</text>
+
+          <!-- AND1 Gate (Computes P_i * C_i) -->
+          ${drawAndGate(496, 184, 'AND 1', `P·C=${st.pAndCin}`, step === 2 ? '#38bdf8' : '#f59e0b', step === 2)}
+          <text x="534" y="176" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="10">${pins.and1.ic}</text>
+        </g>
+
+        <!-- ==================== STEP 3: OR GATE (CARRY OUT C_{i+1}) ==================== -->
+        <g opacity="${opGroup(3)}">
+          <!-- Wire from AND1 (P_i * C_i) to OR Gate input 1 -->
+          <path d="M 564,208 L 625,208 L 625,252 L 665,252" class="${wState(st.pAndCin, 3, 3)}"/>
+          <!-- Wire from AND2 (G_i) to OR Gate input 2 -->
+          <path d="M 314,306 L 625,306 L 625,276 L 665,276" class="${wState(st.g, 3, 3)}"/>
+
+          <!-- OR Gate -->
+          ${drawOrGate(660, 240, 'OR 1', `C${i + 1}=${st.cOut}`, step === 3 ? '#38bdf8' : '#f59e0b', step === 3)}
+          <text x="698" y="232" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="10">${pins.or1.ic}</text>
+
+          <!-- Carry Out Wire & Output Box -->
+          <path d="M 732,264 L 815,264" class="${wState(st.cOut, 3, 3)}"/>
+          <rect x="815" y="242" width="118" height="44" rx="10" fill="#0f172a" stroke="${st.cOut ? '#f59e0b' : '#334155'}" stroke-width="2.2"/>
+          <circle cx="835" cy="264" r="7" fill="${st.cOut ? '#f59e0b' : '#1e293b'}" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="882" y="269" text-anchor="middle" fill="${st.cOut ? '#fbbf24' : '#e2e8f0'}" font-family="JetBrains Mono" font-size="14" font-weight="bold">C${i + 1} = ${st.cOut}</text>
+        </g>
+      `;
+
+      svg.innerHTML = html;
+
+      // Step-by-Step Practical Guidance Text
+      const stepGuides = {
+        1: {
+          badge: 'STEP 1: FIRST HALF-ADDER (PROPAGATE & GENERATE)',
+          titleBn: `ধাপ ১: ইনপুট A${i} এবং B${i} থেকে Propagate (P${i}) ও Generate (G${i}) তৈরি`,
+          descBn: `প্রথমে একটি <strong>XOR গেট (74LS86)</strong> এবং একটি <strong>AND গেট (74LS08)</strong> নাও। ইনপুট সুইচ <strong>A${i}</strong> এবং <strong>B${i}</strong>-কে দুটি গেটেরই ইনপুটে প্যারালালি (সমান্তরালে) যুক্ত করো। XOR গেটের আউটপুট হলো <span class="font-mono text-cyan-300">P${i} = A${i} ⊕ B${i} = ${st.p}</span> এবং AND গেটের আউটপুট হলো <span class="font-mono text-purple-300">G${i} = A${i} · B${i} = ${st.g}</span>।`,
+          wiringList: [
+            `Connect Switch <strong>A${i}</strong> to <strong>${pins.xor1.ic} ${pins.xor1.p1.split(' ')[0]} ${pins.xor1.p1.split(' ')[1]}</strong> AND jumper to <strong>${pins.and2.ic} ${pins.and2.p1.split(' ')[0]} ${pins.and2.p1.split(' ')[1]}</strong>.`,
+            `Connect Switch <strong>B${i}</strong> to <strong>${pins.xor1.ic} ${pins.xor1.p2.split(' ')[0]} ${pins.xor1.p2.split(' ')[1]}</strong> AND jumper to <strong>${pins.and2.ic} ${pins.and2.p2.split(' ')[0]} ${pins.and2.p2.split(' ')[1]}</strong>.`,
+            `Output <strong>${pins.xor1.out}</strong> gives Propagate signal <strong>P${i} = ${st.p}</strong>; Output <strong>${pins.and2.out}</strong> gives Generate signal <strong>G${i} = ${st.g}</strong>.`
+          ]
+        },
+        2: {
+          badge: 'STEP 2: SECOND HALF-ADDER (SUM S_i & PROPAGATED CARRY)',
+          titleBn: `ধাপ ২: P${i}-এর সাথে ক্যারি ইনপুট C${i} যুক্ত করে Sum (S${i}) তৈরি`,
+          descBn: `এবার দ্বিতীয় <strong>XOR গেট (XOR 2)</strong> এবং দ্বিতীয় <strong>AND গেট (AND 1)</strong> নাও। প্রথম XOR গেটের আউটপুট (<span class="font-mono text-cyan-300">P${i}</span>) এবং আগের স্টেজ থেকে আসা ক্যারি (<span class="font-mono text-amber-300">C${i}</span>)—এই দুটিকে XOR 2 এবং AND 1 উভয় গেটের ইনপুটে দাও। XOR 2-এর আউটপুট থেকে সরাসরি <strong>Sum LED (S${i} = ${st.s})</strong> জ্বলবে!`,
+          wiringList: [
+            `Run a wire from <strong>${pins.xor1.out}</strong> to <strong>${pins.xor2.ic} ${pins.xor2.p1.split(' ')[0]} ${pins.xor2.p1.split(' ')[1]}</strong> and jumper to <strong>${pins.and1.ic} ${pins.and1.p1.split(' ')[0]} ${pins.and1.p1.split(' ')[1]}</strong>.`,
+            `Connect Carry-In <strong>C${i}</strong> to <strong>${pins.xor2.ic} ${pins.xor2.p2.split(' ')[0]} ${pins.xor2.p2.split(' ')[1]}</strong> and jumper to <strong>${pins.and1.ic} ${pins.and1.p2.split(' ')[0]} ${pins.and1.p2.split(' ')[1]}</strong>.`,
+            `Connect <strong>${pins.xor2.out}</strong> through a 330Ω resistor to <strong>LED S${i}</strong> (Currently <strong>S${i} = ${st.s}</strong>).`
+          ]
+        },
+        3: {
+          badge: 'STEP 3: CARRY-OUT OR GATE (C_{i+1} = G_i + P_i·C_i)',
+          titleBn: `ধাপ ৩: OR গেটের সাহায্যে পরের স্টেজের ক্যারি (C${i + 1}) তৈরি`,
+          descBn: `একটি Full Adder কখন ক্যারি আউটপুট (<span class="font-mono text-amber-300">C${i + 1} = 1</span>) দেয়? যদি সে নিজে ক্যারি তৈরি করে (<span class="font-mono text-purple-300">G${i} = 1</span>) <strong>অথবা (OR)</strong> আগের ক্যারি পাস করে (<span class="font-mono text-amber-300">P${i} · C${i} = 1</span>)। তাই <strong>AND 1</strong> এবং <strong>AND 2</strong>-এর আউটপুট দুটিকে একটি <strong>OR গেটে (74LS32)</strong> ইনপুট দাও। এর আউটপুটই হলো <span class="font-mono text-amber-300">C${i + 1} = ${st.cOut}</span>।`,
+          wiringList: [
+            `Connect <strong>${pins.and1.out}</strong> to <strong>${pins.or1.ic} ${pins.or1.p1.split(' ')[0]} ${pins.or1.p1.split(' ')[1]}</strong>.`,
+            `Connect <strong>${pins.and2.out}</strong> to <strong>${pins.or1.ic} ${pins.or1.p2.split(' ')[0]} ${pins.or1.p2.split(' ')[1]}</strong>.`,
+            `Output <strong>${pins.or1.out}</strong> produces Carry-Out <strong>C${i + 1} = ${st.cOut}</strong> (takes 2 gate delays after C${i} arrives!).`
+          ]
+        },
+        4: {
+          badge: 'STEP 4: COMPLETE 1-BIT FULL ADDER BUILDING BLOCK',
+          titleBn: `ধাপ ৪: তোমার ১-বিট Full Adder (FA${i}) ব্লকটি সম্পূর্ণ তৈরি!`,
+          descBn: `সবুজ ড্যাশড বক্সের ভেতরের এই ৫টি গেট (২টি XOR, ২টি AND, ১টি OR) মিলে তৈরি হলো একটি সম্পূর্ণ <strong>Full Adder Stage (FA${i})</strong>। এর ৩টি ইনপুট (<span class="font-mono">A${i}, B${i}, C${i}</span>) এবং ২টি আউটপুট (<span class="font-mono">S${i}, C${i + 1}</span>)। পরের ধাপে (Step 5) আমরা এরকম ৪টি ব্লককে একসাথে জুড়ে 4-Bit Ripple Carry Adder বানাব।`,
+          wiringList: [
+            `Verify Stage FA${i}: With <strong>A${i}=${st.a}, B${i}=${st.b}, C${i}=${st.cIn}</strong>, your circuit outputs <strong>S${i}=${st.s}</strong> and <strong>C${i + 1}=${st.cOut}</strong>.`,
+            `Stage Mode: <strong>${st.mode}</strong> (${st.mode === 'PROPAGATE' ? 'Incoming carry ripples through AND1 → OR1' : (st.mode === 'GENERATE' ? 'Generates carry via AND2 → OR1' : 'Kills carry; C_out stays 0')}).`,
+            `Click <strong>Next Step →</strong> above to cascade 4 of these Full Adder blocks into a 4-Bit Ripple Carry Adder!`
+          ]
+        }
+      };
+
+      const g = stepGuides[step];
+      expBox.innerHTML = `
+        <div class="lg:col-span-6 space-y-2">
+          <div class="text-[11px] font-mono font-bold uppercase text-emerald-400">${g.badge}</div>
+          <h3 class="text-sm font-bold text-white">${g.titleBn}</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">${g.descBn}</p>
+        </div>
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+          <div class="text-xs font-mono font-bold text-cyan-300">Practical Breadboard Connections for This Step:</div>
+          <ul class="text-xs text-slate-300 space-y-1.5 font-mono text-[11px]">
+            ${g.wiringList.map(item => `<li>• ${item}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    function renderCascadeStep5Svg(svg, expBox, circuit) {
+      // Show how 4 Full Adder blocks connect from right (FA0) to left (FA3) via animated C1, C2, C3 ripple jumpers
+      const centers = { 3: 185, 2: 395, 1: 605, 0: 815 };
+      let html = `
+        <rect x="10" y="10" width="940" height="380" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1"/>
+        <text x="28" y="36" fill="#38bdf8" font-family="JetBrains Mono" font-size="11" font-weight="bold">
+          STEP 5: CASCADING 4 FULL-ADDER STAGES — CONNECTING CARRY OUT (Cᵢ₊₁) TO NEXT STAGE CARRY IN (Cᵢ)
+        </text>
+      `;
+
+      // Initial C0 input on right
+      html += `
+        <rect x="900" y="168" width="48" height="34" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+        <text x="924" y="189" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="12" font-weight="bold">C₀=${state.Cin}</text>
+        <path d="M 900,185 L 875,185" class="wire-highlight"/>
+      `;
+
+      for (let i = 0; i < 4; i++) {
+        const st = circuit.stages[i];
+        const cx = centers[i];
+        const bx = cx - 60;
+        const by = 120;
+
+        html += `
+          <!-- Inputs A_i and B_i -->
+          <rect x="${cx - 48}" y="52" width="42" height="26" rx="5" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5"/>
+          <text x="${cx - 27}" y="69" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono" font-size="11" font-weight="bold">A${i}=${st.a}</text>
+          <path d="M ${cx - 27},78 L ${cx - 27},120" class="${st.a ? 'wire-on' : 'wire-off'}"/>
+
+          <rect x="${cx + 6}" y="52" width="42" height="26" rx="5" fill="#0f172a" stroke="#818cf8" stroke-width="1.5"/>
+          <text x="${cx + 27}" y="69" text-anchor="middle" fill="#a5b4fc" font-family="JetBrains Mono" font-size="11" font-weight="bold">B${i}=${st.b}</text>
+          <path d="M ${cx + 27},78 L ${cx + 27},120" class="${st.b ? 'wire-on' : 'wire-off'}"/>
+
+          <!-- FA Block -->
+          <rect x="${bx}" y="${by}" width="120" height="130" rx="14" fill="#111827" stroke="#10b981" stroke-width="2.2"/>
+          <text x="${cx}" y="${by + 28}" text-anchor="middle" fill="#ffffff" font-family="Inter" font-size="14" font-weight="bold">FA${i} Stage</text>
+          <text x="${cx}" y="${by + 48}" text-anchor="middle" fill="#38bdf8" font-family="JetBrains Mono" font-size="10">P${i}=${st.p} | G${i}=${st.g}</text>
+          <text x="${cx}" y="${by + 70}" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="10">${st.mode}</text>
+          <text x="${cx}" y="${by + 112}" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">U5 Pin ${[3, 6, 8, 11][i]} → C${i + 1}</text>
+
+          <!-- Sum Output S_i -->
+          <path d="M ${cx},250 L ${cx},308" class="${st.s ? 'wire-on' : 'wire-off'}"/>
+          <rect x="${cx - 32}" y="308" width="64" height="36" rx="8" fill="#0f172a" stroke="${st.s ? '#10b981' : '#334155'}" stroke-width="2"/>
+          <text x="${cx}" y="331" text-anchor="middle" fill="${st.s ? '#34d399' : '#e2e8f0'}" font-family="JetBrains Mono" font-size="13" font-weight="bold">S${i}=${st.s}</text>
+        `;
+
+        // Carry Ripple Jumper to next stage on left
+        if (i < 3) {
+          const nextRight = centers[i + 1] + 60;
+          const midX = (bx + nextRight) / 2;
+          html += `
+            <path d="M ${bx},185 L ${nextRight},185" class="wire-highlight"/>
+            <rect x="${midX - 36}" y="146" width="72" height="28" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="1.8"/>
+            <text x="${midX}" y="164" text-anchor="middle" fill="#38bdf8" font-family="JetBrains Mono" font-size="11" font-weight="bold">C${i + 1} = ${st.cOut}</text>
+            <text x="${midX}" y="208" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="9">Ripple Wire #${i + 1}</text>
+          `;
+        } else {
+          html += `
+            <path d="M ${bx},185 L 82,185" class="wire-highlight"/>
+            <rect x="18" y="163" width="64" height="44" rx="8" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+            <text x="50" y="182" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">Cout LED</text>
+            <text x="50" y="198" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="13" font-weight="bold">C₄=${st.cOut}</text>
+          `;
+        }
+      }
+
+      svg.innerHTML = html;
+
+      expBox.innerHTML = `
+        <div class="lg:col-span-6 space-y-2">
+          <div class="text-[11px] font-mono font-bold uppercase text-emerald-400">STEP 5: CASCADING 4 FULL ADDERS (THE RIPPLE CARRY CHAIN)</div>
+          <h3 class="text-sm font-bold text-white">ধাপ ৫: ৪টি Full Adder-কে কেবল ৩টি ক্যারি জাম্পার তার দিয়ে যুক্ত করো</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            এটিই Ripple Carry Adder-এর সবচেয়ে গুরুত্বপূর্ণ ধাপ! ডানদিক থেকে বামদিকে প্রতিটি স্টেজের <strong>OR গেটের আউটপুট পিনকে</strong> পরের স্টেজের <strong>Cᵢ ইনপুট পিনের</strong> সাথে যুক্ত করো। নীল হাইলাইট করা তারগুলো (<span class="font-mono text-cyan-300">C₁, C₂, C₃</span>) লক্ষ্য করো—এখান দিয়েই ক্যারি এক স্টেজ থেকে পরের স্টেজে প্রবাহিত (ripple) হয়।
+          </p>
+        </div>
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+          <div class="text-xs font-mono font-bold text-cyan-300">The 3 Inter-Stage Carry Ripple Wires on Breadboard:</div>
+          <ul class="text-xs text-slate-300 space-y-1.5 font-mono text-[11px]">
+            <li>• <strong>Ripple Wire #1 (C₁ = ${circuit.stages[0].cOut}):</strong> Connect <strong>FA0 OR Out (U5 Pin 3)</strong> → <strong>U1 Pin 13</strong> &amp; <strong>U3 Pin 13</strong> (FA1 Carry-In).</li>
+            <li>• <strong>Ripple Wire #2 (C₂ = ${circuit.stages[1].cOut}):</strong> Connect <strong>FA1 OR Out (U5 Pin 6)</strong> → <strong>U2 Pin 5</strong> &amp; <strong>U4 Pin 5</strong> (FA2 Carry-In).</li>
+            <li>• <strong>Ripple Wire #3 (C₃ = ${circuit.stages[2].cOut}):</strong> Connect <strong>FA2 OR Out (U5 Pin 8)</strong> → <strong>U2 Pin 13</strong> &amp; <strong>U4 Pin 13</strong> (FA3 Carry-In).</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    function renderFull20GateStep6Svg(svg, expBox, circuit) {
+      // Complete 4-Stage 20-Gate Schematic View side-by-side (FA3, FA2, FA1, FA0)
+      const cols = { 3: 140, 2: 365, 1: 590, 0: 815 };
+      let html = `
+        <rect x="6" y="6" width="948" height="388" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1"/>
+        <text x="22" y="28" fill="#10b981" font-family="JetBrains Mono" font-size="11" font-weight="bold">
+          STEP 6: COMPLETE 20-GATE 4-BIT RIPPLE CARRY ADDER SCHEMATIC (ALL 4 STAGES &amp; CARRY RIPPLE CHAIN)
+        </text>
+      `;
+
+      // C0 input on far right
+      html += `
+        <rect x="912" y="218" width="38" height="24" rx="5" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="931" y="234" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="10" font-weight="bold">C₀=${state.Cin}</text>
+      `;
+
+      for (let i = 0; i < 4; i++) {
+        const st = circuit.stages[i];
+        const cx = cols[i];
+        const left = cx - 95;
+        const w = val => (val ? 'wire-on' : 'wire-off');
+
+        html += `
+          <!-- Stage Container Box -->
+          <rect x="${left}" y="38" width="190" height="342" rx="12" fill="#0d1322" stroke="#1e293b" stroke-width="1.5"/>
+          <text x="${cx}" y="55" text-anchor="middle" fill="#ffffff" font-family="Inter" font-size="12" font-weight="bold">Stage FA${i} ${i === 3 ? '(MSB)' : (i === 0 ? '(LSB)' : '')}</text>
+
+          <!-- Top Inputs A_i, B_i -->
+          <rect x="${cx - 65}" y="64" width="52" height="22" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1.2"/>
+          <text x="${cx - 39}" y="79" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono" font-size="10" font-weight="bold">A${i}=${st.a}</text>
+
+          <rect x="${cx + 13}" y="64" width="52" height="22" rx="4" fill="#0f172a" stroke="#818cf8" stroke-width="1.2"/>
+          <text x="${cx + 39}" y="79" text-anchor="middle" fill="#a5b4fc" font-family="JetBrains Mono" font-size="10" font-weight="bold">B${i}=${st.b}</text>
+
+          <!-- Row 1 Gates: XOR1 (P_i) and AND2 (G_i) -->
+          <path d="M ${cx - 39},86 L ${cx - 39},108" class="${w(st.a)}"/>
+          <path d="M ${cx + 39},86 L ${cx - 25},108" class="${w(st.b)}"/>
+          <path d="M ${cx - 39},86 L ${cx + 25},108" class="${w(st.a)}"/>
+          <path d="M ${cx + 39},86 L ${cx + 39},108" class="${w(st.b)}"/>
+
+          <rect x="${cx - 78}" y="108" width="72" height="34" rx="6" fill="#1e293b" stroke="#06b6d4" stroke-width="1.5"/>
+          <text x="${cx - 42}" y="123" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="9" font-weight="bold">XOR1</text>
+          <text x="${cx - 42}" y="135" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono" font-size="9">P${i}=${st.p}</text>
+
+          <rect x="${cx + 6}" y="108" width="72" height="34" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1.5"/>
+          <text x="${cx + 42}" y="123" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="9" font-weight="bold">AND2</text>
+          <text x="${cx + 42}" y="135" text-anchor="middle" fill="#c084fc" font-family="JetBrains Mono" font-size="9">G${i}=${st.g}</text>
+
+          <!-- Row 2 Gates: XOR2 (Sum S_i) and AND1 (P_i * C_i) -->
+          <path d="M ${cx - 42},142 L ${cx - 42},182" class="${w(st.p)}"/>
+          <path d="M ${cx - 42},162 L ${cx + 25},182" class="${w(st.p)}"/>
+
+          <rect x="${cx - 78}" y="182" width="72" height="34" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+          <text x="${cx - 42}" y="197" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="9" font-weight="bold">XOR2</text>
+          <text x="${cx - 42}" y="209" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono" font-size="9">P${i}⊕C${i}=${st.s}</text>
+
+          <rect x="${cx + 6}" y="182" width="72" height="34" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="${cx + 42}" y="197" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="9" font-weight="bold">AND1</text>
+          <text x="${cx + 42}" y="209" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="9">P${i}·C${i}=${st.pAndCin}</text>
+
+          <!-- Row 3 Gate: OR1 (Carry Out C_{i+1}) -->
+          <path d="M ${cx + 42},216 L ${cx + 25},262" class="${w(st.pAndCin)}"/>
+          <path d="M ${cx + 62},142 L ${cx + 62},262" class="${w(st.g)}"/>
+
+          <rect x="${cx + 6}" y="262" width="72" height="34" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.8"/>
+          <text x="${cx + 42}" y="277" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="9" font-weight="bold">OR1</text>
+          <text x="${cx + 42}" y="289" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="9">C${i + 1}=${st.cOut}</text>
+
+          <!-- Sum S_i Output LED at Bottom -->
+          <path d="M ${cx - 42},216 L ${cx - 42},332" class="${w(st.s)}"/>
+          <rect x="${cx - 72}" y="332" width="60" height="28" rx="6" fill="#0f172a" stroke="${st.s ? '#10b981' : '#334155'}" stroke-width="1.8"/>
+          <text x="${cx - 42}" y="350" text-anchor="middle" fill="${st.s ? '#34d399' : '#e2e8f0'}" font-family="JetBrains Mono" font-size="11" font-weight="bold">S${i}=${st.s}</text>
+        `;
+
+        // Carry Ripple Chain Wire from OR1 of stage i to XOR2/AND1 of stage i+1
+        if (i < 3) {
+          const nextCx = cols[i + 1];
+          html += `
+            <path d="M ${cx + 6},279 L ${cx - 108},279 L ${cx - 108},170 L ${nextCx + 42},170 L ${nextCx + 42},182" class="${st.cOut ? 'wire-ripple' : 'wire-off'}"/>
+            <circle cx="${cx - 108}" cy="225" r="11" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="${cx - 108}" y="229" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="9" font-weight="bold">C${i + 1}</text>
+          `;
+        } else {
+          // Final C4 Output on far left
+          html += `
+            <path d="M ${cx + 6},279 L 25,279 L 25,332" class="${st.cOut ? 'wire-ripple' : 'wire-off'}"/>
+            <rect x="8" y="332" width="52" height="28" rx="6" fill="#0f172a" stroke="${st.cOut ? '#f59e0b' : '#334155'}" stroke-width="2"/>
+            <text x="34" y="350" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="11" font-weight="bold">C₄=${st.cOut}</text>
+          `;
+        }
+      }
+
+      svg.innerHTML = html;
+
+      expBox.innerHTML = `
+        <div class="lg:col-span-6 space-y-2">
+          <div class="text-[11px] font-mono font-bold uppercase text-emerald-400">STEP 6: COMPLETE 4-BIT RIPPLE CARRY ADDER (20 LOGIC GATES)</div>
+          <h3 class="text-sm font-bold text-white">ধাপ ৬: সম্পূর্ণ 4-Bit Ripple Carry Adder-এর ২০-গেট লজিক ডায়াগ্রাম</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            উপরের ডায়াগ্রামে ৪টি স্টেজের (FA0, FA1, FA2, FA3) প্রতিটির ভেতরের ৫টি করে মোট <strong>২০টি লজিক গেট</strong> (৮টি XOR, ৮টি AND, ৪টি OR) এবং তাদের মধ্যকার <strong>Carry Ripple Path (<span class="font-mono text-amber-300">C₀ → C₁ → C₂ → C₃ → C₄</span>)</strong> একসাথে দেখানো হয়েছে। উপরের ইনপুট বিট পরিবর্তন করলে প্রতিটি গেটের আউটপুট সাথে সাথে আপডেট হবে।
+          </p>
+        </div>
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+          <div class="text-xs font-mono font-bold text-cyan-300">Ready to Wire on Breadboard?</div>
+          <ul class="text-xs text-slate-300 space-y-1.5 font-mono text-[11px]">
+            <li>• Total Gate Count: <strong>8 XOR gates + 8 AND gates + 4 OR gates = 20 gates</strong>.</li>
+            <li>• Critical Path Delay: <strong>C₀</strong> passes through <strong>AND1 → OR1</strong> in FA0, FA1, FA2, and FA3 (<strong>8 gate delays = ${8 * state.tauNs} ns</strong>).</li>
+            <li>• Click the <strong>"2. Practical Breadboard &amp; IC Pinout"</strong> tab at the top to see the 14-pin IC diagram and checkable pin-to-pin wiring table!</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // TAB 2 RENDERER: 14-PIN DIP IC PINOUT & CHECKABLE WIRING TABLE
+    // =========================================================================
+    function renderPracticalPinoutAndTable(circuit) {
+      const pinSvg = document.getElementById('icPinoutSvg');
+      pinSvg.innerHTML = `
+        <rect x="10" y="10" width="880" height="230" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1"/>
+
+        <!-- 14-Pin DIP Chip Body -->
+        <rect x="230" y="55" width="440" height="140" rx="12" fill="#1e293b" stroke="#475569" stroke-width="2.5"/>
+        <!-- Left Notch -->
+        <path d="M 230,108 A 16,16 0 0 1 230,142" fill="#090d16" stroke="#475569" stroke-width="2"/>
+        <circle cx="252" cy="175" r="4" fill="#94a3b8"/>
+
+        <text x="450" y="118" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="15" font-weight="bold">
+          74LS86 (XOR) / 74LS08 (AND) / 74LS32 (OR)
+        </text>
+        <text x="450" y="138" text-anchor="middle" fill="#38bdf8" font-family="JetBrains Mono" font-size="11">
+          Standard 14-Pin Quad 2-Input Logic Gate DIP Pinout (Top View)
+        </text>
+
+        <!-- Top Pins: 14 down to 8 -->
+        ${[
+          { pin: 14, label: 'VCC (+5V)', color: '#f43f5e' },
+          { pin: 13, label: 'Gate D In 2 (4B)', color: '#38bdf8' },
+          { pin: 12, label: 'Gate D In 1 (4A)', color: '#38bdf8' },
+          { pin: 11, label: 'Gate D Out (4Y)', color: '#10b981' },
+          { pin: 10, label: 'Gate C In 2 (3B)', color: '#a855f7' },
+          { pin: 9,  label: 'Gate C In 1 (3A)', color: '#a855f7' },
+          { pin: 8,  label: 'Gate C Out (3Y)', color: '#10b981' }
+        ].map((p, idx) => {
+          const px = 265 + idx * 60;
+          return `
+            <rect x="${px - 12}" y="35" width="24" height="20" rx="3" fill="#0f172a" stroke="${p.color}" stroke-width="1.8"/>
+            <text x="${px}" y="49" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="10" font-weight="bold">${p.pin}</text>
+            <text x="${px}" y="25" text-anchor="middle" fill="${p.color}" font-family="JetBrains Mono" font-size="8.5" font-weight="bold">${p.label}</text>
+            <text x="${px}" y="74" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">Pin ${p.pin}</text>
+          `;
+        }).join('')}
+
+        <!-- Bottom Pins: 1 to 7 -->
+        ${[
+          { pin: 1, label: 'Gate A In 1 (1A)', color: '#38bdf8' },
+          { pin: 2, label: 'Gate A In 2 (1B)', color: '#38bdf8' },
+          { pin: 3, label: 'Gate A Out (1Y)', color: '#10b981' },
+          { pin: 4, label: 'Gate B In 1 (2A)', color: '#f59e0b' },
+          { pin: 5, label: 'Gate B In 2 (2B)', color: '#f59e0b' },
+          { pin: 6, label: 'Gate B Out (2Y)', color: '#10b981' },
+          { pin: 7, label: 'GND (0V)', color: '#94a3b8' }
+        ].map((p, idx) => {
+          const px = 265 + idx * 60;
+          return `
+            <rect x="${px - 12}" y="195" width="24" height="20" rx="3" fill="#0f172a" stroke="${p.color}" stroke-width="1.8"/>
+            <text x="${px}" y="209" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono" font-size="10" font-weight="bold">${p.pin}</text>
+            <text x="${px}" y="232" text-anchor="middle" fill="${p.color}" font-family="JetBrains Mono" font-size="8.5" font-weight="bold">${p.label}</text>
+            <text x="${px}" y="184" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">Pin ${p.pin}</text>
+          `;
+        }).join('')}
+      `;
+
+      // Update Filter Buttons
+      document.querySelectorAll('.wire-filter-btn').forEach(btn => {
+        const val = btn.getAttribute('data-wire-stage');
+        if (val === state.wireStageFilter) {
+          btn.className = 'wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-500 text-slate-950 shadow';
+        } else {
+          btn.className = 'wire-filter-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-slate-300 hover:bg-slate-800';
+        }
+      });
+
+      // Build rows for breadboard wiring table
+      const tbody = document.getElementById('breadboardWiringBody');
+      let rowsHtml = '';
+
+      for (let i = 0; i < 4; i++) {
+        if (state.wireStageFilter !== 'all' && parseInt(state.wireStageFilter, 10) !== i) continue;
+
+        const st = circuit.stages[i];
+        const pm = stagePinMap[i];
+        const gateRows = [
+          { key: `fa${i}_xor1`, fn: `Propagate P${i} = A${i} ⊕ B${i}`, meta: pm.xor1, val: st.p },
+          { key: `fa${i}_and2`, fn: `Generate G${i} = A${i} · B${i}`, meta: pm.and2, val: st.g },
+          { key: `fa${i}_xor2`, fn: `Sum S${i} = P${i} ⊕ C${i}`, meta: pm.xor2, val: st.s },
+          { key: `fa${i}_and1`, fn: `Ripple Term P${i} · C${i}`, meta: pm.and1, val: st.pAndCin },
+          { key: `fa${i}_or1`,  fn: `Carry Out C${i + 1} = G${i} + P${i}·C${i}`, meta: pm.or1, val: st.cOut }
+        ];
+
+        gateRows.forEach(gr => {
+          const isChecked = !!state.checkedWires[gr.key];
+          rowsHtml += `
+            <tr class="hover:bg-slate-800/40 transition-colors ${isChecked ? 'bg-emerald-950/20' : ''}">
+              <td class="py-2 px-3">
+                <input type="checkbox" data-wire-check="${gr.key}" ${isChecked ? 'checked' : ''} class="w-4 h-4 accent-emerald-500 rounded cursor-pointer"/>
+              </td>
+              <td class="py-2 px-3 font-bold text-white">FA${i}</td>
+              <td class="py-2 px-3 text-cyan-300">${gr.fn}</td>
+              <td class="py-2 px-3 text-slate-200">${gr.meta.ic}</td>
+              <td class="py-2 px-3 text-slate-300">${gr.meta.p1}</td>
+              <td class="py-2 px-3 text-slate-300">${gr.meta.p2}</td>
+              <td class="py-2 px-3 text-amber-300 font-semibold">${gr.meta.out}</td>
+              <td class="py-2 px-3 text-right">
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${gr.val ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'}">
+                  Logic ${gr.val}
+                </span>
+              </td>
+            </tr>
+          `;
+        });
+      }
+
+      tbody.innerHTML = rowsHtml;
+
+      tbody.querySelectorAll('[data-wire-check]').forEach(chk => {
+        chk.addEventListener('change', e => {
+          const k = e.target.getAttribute('data-wire-check');
+          state.checkedWires[k] = e.target.checked;
+          renderPracticalPinoutAndTable(circuit);
+        });
+      });
+    }
+
+    // =========================================================================
+    // TAB 3 RENDERER: 4-STAGE BLOCK DIAGRAM & TRACE TABLE
+    // =========================================================================
+    function renderMainBlockSvg(circuit) {
+      const svgGroup = document.getElementById('svgDynamicContent');
+      const centers = { 3: 215, 2: 425, 1: 635, 0: 845 };
+      let html = '';
+
+      const c0WireClass = state.simStep === 0 ? 'wire-ripple' : (state.Cin === 1 ? 'wire-on' : 'wire-off');
+      const c0Marker = state.simStep === 0 ? 'url(#arrowRipple)' : (state.Cin === 1 ? 'url(#arrowOn)' : 'url(#arrowOff)');
+      html += `
+        <line x1="960" y1="170" x2="920" y2="170" class="${c0WireClass}" marker-end="${c0Marker}" />
+        <rect x="930" y="132" width="44" height="26" rx="6" fill="#0f172a" stroke="${state.Cin ? '#f59e0b' : '#334155'}" stroke-width="1.5"/>
+        <text x="952" y="149" text-anchor="middle" fill="${state.Cin ? '#fbbf24' : '#94a3b8'}" font-family="JetBrains Mono" font-size="12" font-weight="bold">C₀=${state.Cin}</text>
+      `;
+
+      for (let i = 0; i < 4; i++) {
+        const st = circuit.stages[i];
+        const cx = centers[i];
+        const boxW = 140;
+        const boxH = 120;
+        const boxX = cx - boxW / 2;
+        const boxY = 110;
+
+        const isStageSettled = state.simStep > i;
+        const isStageActive = state.simStep === i;
+
+        const aWireClass = st.a === 1 ? 'wire-on' : 'wire-off';
+        const bWireClass = st.b === 1 ? 'wire-on' : 'wire-off';
+        const aMarker = st.a === 1 ? 'url(#arrowOn)' : 'url(#arrowOff)';
+        const bMarker = st.b === 1 ? 'url(#arrowOn)' : 'url(#arrowOff)';
+
+        const ax = cx - 30;
+        const bx = cx + 30;
+        html += `
+          <rect x="${ax - 22}" y="18" width="44" height="28" rx="6" fill="#0f172a" stroke="${st.a ? '#06b6d4' : '#334155'}" stroke-width="1.5"/>
+          <text x="${ax}" y="36" text-anchor="middle" fill="${st.a ? '#22d3ee' : '#94a3b8'}" font-family="JetBrains Mono" font-size="12" font-weight="bold">A${i}=${st.a}</text>
+          <line x1="${ax}" y1="46" x2="${ax}" y2="${boxY - 2}" class="${aWireClass}" marker-end="${aMarker}" />
+
+          <rect x="${bx - 22}" y="18" width="44" height="28" rx="6" fill="#0f172a" stroke="${st.b ? '#818cf8' : '#334155'}" stroke-width="1.5"/>
+          <text x="${bx}" y="36" text-anchor="middle" fill="${st.b ? '#a5b4fc' : '#94a3b8'}" font-family="JetBrains Mono" font-size="12" font-weight="bold">B${i}=${st.b}</text>
+          <line x1="${bx}" y1="46" x2="${bx}" y2="${boxY - 2}" class="${bWireClass}" marker-end="${bMarker}" />
+        `;
+
+        const boxStroke = isStageActive
+          ? '#f59e0b'
+          : (state.selectedFA === i ? '#38bdf8' : (isStageSettled ? '#10b981' : '#334155'));
+        const boxStrokeWidth = (isStageActive || state.selectedFA === i) ? '2.8' : '2';
+
+        const badgeColor = st.mode === 'GENERATE'
+          ? '#10b981'
+          : (st.mode === 'PROPAGATE' ? '#f59e0b' : '#f43f5e');
+
+        html += `
+          <g class="cursor-pointer" data-svg-fa="${i}">
+            <rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="14" fill="#111827" stroke="${boxStroke}" stroke-width="${boxStrokeWidth}"/>
+            <text x="${cx}" y="${boxY + 28}" text-anchor="middle" fill="#ffffff" font-family="Inter" font-size="14" font-weight="bold">Full Adder FA${i}</text>
+            <text x="${cx}" y="${boxY + 48}" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="11">P${i}=${st.p} | G${i}=${st.g}</text>
+            <rect x="${cx - 48}" y="${boxY + 60}" width="96" height="22" rx="5" fill="#0b0f19" stroke="${badgeColor}" stroke-width="1"/>
+            <text x="${cx}" y="${boxY + 75}" text-anchor="middle" fill="${badgeColor}" font-family="JetBrains Mono" font-size="10" font-weight="bold">${st.mode}</text>
+            <text x="${cx}" y="${boxY + 104}" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">Delay: ${(i + 1) * 2}τg (${(i + 1) * 2 * state.tauNs}ns)</text>
+          </g>
+        `;
+
+        const sWireClass = !isStageSettled
+          ? (isStageActive ? 'wire-ripple' : 'wire-pending')
+          : (st.s === 1 ? 'wire-on' : 'wire-off');
+        const sMarker = !isStageSettled
+          ? (isStageActive ? 'url(#arrowRipple)' : 'url(#arrowOff)')
+          : (st.s === 1 ? 'url(#arrowOn)' : 'url(#arrowOff)');
+        const displayedS = isStageSettled ? st.s : '?';
+
+        html += `
+          <line x1="${cx}" y1="${boxY + boxH}" x2="${cx}" y2="278" class="${sWireClass}" marker-end="${sMarker}" />
+          <rect x="${cx - 28}" y="282" width="56" height="34" rx="8" fill="#0f172a" stroke="${isStageSettled && st.s ? '#10b981' : '#334155'}" stroke-width="1.8"/>
+          <text x="${cx}" y="304" text-anchor="middle" fill="${isStageSettled ? (st.s ? '#34d399' : '#e2e8f0') : '#fbbf24'}" font-family="JetBrains Mono" font-size="13" font-weight="bold">S${i}=${displayedS}</text>
+        `;
+
+        const cWireClass = isStageActive
+          ? 'wire-ripple'
+          : (!isStageSettled ? 'wire-pending' : (st.cOut === 1 ? 'wire-on' : 'wire-off'));
+        const cMarker = isStageActive
+          ? 'url(#arrowRipple)'
+          : (!isStageSettled ? 'url(#arrowOff)' : (st.cOut === 1 ? 'url(#arrowOn)' : 'url(#arrowOff)'));
+        const displayedC = isStageSettled ? st.cOut : '?';
+
+        if (i < 3) {
+          const nextRightX = centers[i + 1] + boxW / 2;
+          const midX = (boxX + nextRightX) / 2;
+          html += `
+            <line x1="${boxX}" y1="170" x2="${nextRightX + 4}" y2="170" class="${cWireClass}" marker-end="${cMarker}" />
+            <rect x="${midX - 24}" y="134" width="48" height="24" rx="6" fill="#0f172a" stroke="${isStageSettled && st.cOut ? '#10b981' : (isStageActive ? '#f59e0b' : '#334155')}" stroke-width="1.4"/>
+            <text x="${midX}" y="150" text-anchor="middle" fill="${isStageSettled ? (st.cOut ? '#34d399' : '#94a3b8') : '#fbbf24'}" font-family="JetBrains Mono" font-size="11" font-weight="bold">C${i + 1}=${displayedC}</text>
+          `;
+        } else {
+          html += `
+            <line x1="${boxX}" y1="170" x2="88" y2="170" class="${cWireClass}" marker-end="${cMarker}" />
+            <rect x="14" y="150" width="70" height="40" rx="8" fill="#0f172a" stroke="${isStageSettled && st.cOut ? '#f59e0b' : '#334155'}" stroke-width="2"/>
+            <text x="49" y="168" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">Cout</text>
+            <text x="49" y="183" text-anchor="middle" fill="${isStageSettled ? (st.cOut ? '#fbbf24' : '#e2e8f0') : '#fbbf24'}" font-family="JetBrains Mono" font-size="13" font-weight="bold">C₄=${displayedC}</text>
+          `;
+        }
+      }
+
+      svgGroup.innerHTML = html;
+
+      svgGroup.querySelectorAll('[data-svg-fa]').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.getAttribute('data-svg-fa'), 10);
+          state.selectedFA = idx;
+          state.buildStep = 4;
+          switchTab('stepBuilder');
+          renderAll();
+        });
+      });
+    }
+
+    function renderStageCards(circuit) {
+      const container = document.getElementById('stageCardsContainer');
+      let html = '';
+      for (let i = 3; i >= 0; i--) {
+        const st = circuit.stages[i];
+        const isActive = state.simStep === i;
+        const isSettled = state.simStep > i;
+
+        const borderClass = isActive
+          ? 'border-amber-500 stage-active-ripple bg-slate-900'
+          : (isSettled ? 'border-slate-800 stage-settled bg-slate-950/80' : 'border-slate-800/60 bg-slate-950/40 opacity-75');
+
+        const modeBadge = st.mode === 'GENERATE'
+          ? '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">GENERATE (G=1)</span>'
+          : (st.mode === 'PROPAGATE'
+            ? '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">PROPAGATE (P=1)</span>'
+            : '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">KILL (K=1)</span>');
+
+        html += `
+          <div class="stage-card rounded-xl border p-3.5 flex flex-col justify-between gap-2.5 ${borderClass}">
+            <div class="flex items-center justify-between">
+              <span class="font-mono font-bold text-xs text-white">Stage FA${i} ${i === 3 ? '(MSB)' : (i === 0 ? '(LSB)' : '')}</span>
+              ${modeBadge}
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono bg-slate-900/90 p-2 rounded-lg border border-slate-800/80">
+              <div class="text-slate-400">Inputs: <span class="text-white">A${i}=${st.a}, B${i}=${st.b}</span></div>
+              <div class="text-slate-400">Carry In: <span class="text-amber-300">C${i}=${st.cIn}</span></div>
+              <div class="text-slate-400">Sum S${i}: <span class="text-emerald-400 font-bold">${isSettled ? st.s : '?'}</span></div>
+              <div class="text-slate-400">Carry C${i + 1}: <span class="text-amber-400 font-bold">${isSettled ? st.cOut : '?'}</span></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span>Valid at: <strong class="font-mono text-cyan-300">${st.cOutValidTau} τg (${st.cOutValidTau * state.tauNs} ns)</strong></span>
+              <button type="button" data-inspect-fa="${i}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline">
+                Step-by-Step Gate →
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+
+      container.querySelectorAll('[data-inspect-fa]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedFA = parseInt(btn.getAttribute('data-inspect-fa'), 10);
+          state.buildStep = 4;
+          switchTab('stepBuilder');
+          renderAll();
+        });
+      });
+    }
+
+    function renderPropagationTable(circuit) {
+      const tbody = document.getElementById('propagationTableBody');
+      let html = '';
+      for (let i = 0; i < 4; i++) {
+        const st = circuit.stages[i];
+        const actionDesc = st.mode === 'GENERATE'
+          ? 'Generates Cᵢ₊₁=1 locally (Aᵢ=1, Bᵢ=1)'
+          : (st.mode === 'PROPAGATE'
+            ? `Ripples incoming C${i}=${st.cIn} → C${i + 1}=${st.cOut}`
+            : 'Kills carry chain (Cᵢ₊₁=0)');
+
+        html += `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 font-bold text-white">FA${i} ${i === 0 ? '(LSB)' : (i === 3 ? '(MSB)' : '')}</td>
+            <td class="py-2.5 px-3 text-slate-300">A${i}=${st.a}, B${i}=${st.b}, C${i}=${st.cIn}</td>
+            <td class="py-2.5 px-3 text-cyan-300">${st.a} ⊕ ${st.b} = <strong>${st.p}</strong></td>
+            <td class="py-2.5 px-3 text-emerald-300">${st.a} · ${st.b} = <strong>${st.g}</strong></td>
+            <td class="py-2.5 px-3 text-amber-300">${actionDesc}</td>
+            <td class="py-2.5 px-3 font-bold text-white">S${i}=${st.s}, C${i + 1}=${st.cOut}</td>
+            <td class="py-2.5 px-3 text-right text-cyan-300">S${i}: ${st.sumValidTau * state.tauNs}ns | C${i + 1}: ${st.cOutValidTau * state.tauNs}ns</td>
+          </tr>
+        `;
+      }
+      tbody.innerHTML = html;
+    }
+
+    function renderDelayAnalysis(circuit) {
+      document.getElementById('formulaTauLabel').textContent = `${state.tauNs} ns`;
+      document.getElementById('eqCoutDelay').textContent = `2 × 4 × ${state.tauNs} ns = ${8 * state.tauNs} ns (8 τg)`;
+      document.getElementById('eq32BitDelay').textContent = `2 × 32 × ${state.tauNs} ns = ${64 * state.tauNs} ns (64 τg)`;
+
+      const waveSvg = document.getElementById('waveformSvg');
+      const signals = [
+        { name: 'C₁ (FA0 Cout)', validTau: circuit.carryValidTau[1], val: circuit.stages[0].cOut },
+        { name: 'C₂ (FA1 Cout)', validTau: circuit.carryValidTau[2], val: circuit.stages[1].cOut },
+        { name: 'C₃ (FA2 Cout)', validTau: circuit.carryValidTau[3], val: circuit.stages[2].cOut },
+        { name: 'C₄ (Final Cout)', validTau: circuit.carryValidTau[4], val: circuit.stages[3].cOut },
+        { name: 'S₀ (FA0 Sum)', validTau: circuit.stages[0].sumValidTau, val: circuit.stages[0].s },
+        { name: 'S₁ (FA1 Sum)', validTau: circuit.stages[1].sumValidTau, val: circuit.stages[1].s },
+        { name: 'S₂ (FA2 Sum)', validTau: circuit.stages[2].sumValidTau, val: circuit.stages[2].s },
+        { name: 'S₃ (FA3 Sum)', validTau: circuit.stages[3].sumValidTau, val: circuit.stages[3].s }
+      ];
+
+      const leftPad = 125;
+      const plotW = 520;
+      let waveHtml = '';
+
+      for (let t = 0; t <= 8; t++) {
+        const x = leftPad + (t / 8) * plotW;
+        waveHtml += `
+          <line x1="${x}" y1="25" x2="${x}" y2="330" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="${x}" y="18" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">${t}τg (${t * state.tauNs}ns)</text>
+        `;
+      }
+
+      signals.forEach((sig, idx) => {
+        const yTop = 36 + idx * 36;
+        const validX = leftPad + (sig.validTau / 8) * plotW;
+        const endX = leftPad + plotW;
+
+        waveHtml += `
+          <text x="12" y="${yTop + 18}" fill="#e2e8f0" font-family="JetBrains Mono" font-size="11" font-weight="bold">${sig.name}</text>
+          <rect x="${leftPad}" y="${yTop + 4}" width="${Math.max(2, validX - leftPad)}" height="20" rx="4" fill="rgba(245, 158, 11, 0.18)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="${(leftPad + validX) / 2}" y="${yTop + 17}" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="9">Rippling</text>
+          <rect x="${validX}" y="${yTop + 4}" width="${endX - validX}" height="20" rx="4" fill="${sig.val ? 'rgba(16, 185, 129, 0.22)' : 'rgba(51, 65, 85, 0.35)'}" stroke="${sig.val ? '#10b981' : '#64748b'}" stroke-width="1.5"/>
+          <text x="${(validX + endX) / 2}" y="${yTop + 18}" text-anchor="middle" fill="${sig.val ? '#34d399' : '#cbd5e1'}" font-family="JetBrains Mono" font-size="10" font-weight="bold">Valid = ${sig.val} (at ${sig.validTau * state.tauNs}ns)</text>
+        `;
+      });
+
+      waveSvg.innerHTML = waveHtml;
+
+      const compSvg = document.getElementById('delayComparisonSvg');
+      const bitWidths = [
+        { bits: 4, rcaTau: 8, claTau: 4 },
+        { bits: 8, rcaTau: 16, claTau: 6 },
+        { bits: 16, rcaTau: 32, claTau: 8 },
+        { bits: 32, rcaTau: 64, claTau: 10 }
+      ];
+
+      let compHtml = `
+        <text x="20" y="20" fill="#f59e0b" font-family="JetBrains Mono" font-size="10" font-weight="bold">■ Ripple Carry Adder (2n·τg)</text>
+        <text x="235" y="20" fill="#10b981" font-family="JetBrains Mono" font-size="10" font-weight="bold">■ Carry Lookahead Adder (~O(log n))</text>
+      `;
+
+      bitWidths.forEach((bw, idx) => {
+        const y = 42 + idx * 45;
+        const rcaW = (bw.rcaTau / 64) * 290;
+        const claW = (bw.claTau / 64) * 290;
+
+        compHtml += `
+          <text x="15" y="${y + 18}" fill="#e2e8f0" font-family="JetBrains Mono" font-size="11" font-weight="bold">${bw.bits}-Bit</text>
+          <rect x="75" y="${y}" width="${rcaW}" height="14" rx="3" fill="#f59e0b"/>
+          <text x="${82 + rcaW}" y="${y + 11}" fill="#fbbf24" font-family="JetBrains Mono" font-size="10">${bw.rcaTau * state.tauNs} ns (${bw.rcaTau}τg)</text>
+          <rect x="75" y="${y + 17}" width="${claW}" height="14" rx="3" fill="#10b981"/>
+          <text x="${82 + claW}" y="${y + 28}" fill="#34d399" font-family="JetBrains Mono" font-size="10">${bw.claTau * state.tauNs} ns (${bw.claTau}τg)</text>
+        `;
+      });
+
+      compSvg.innerHTML = compHtml;
+    }
+
+    // --- Tab Switching ---
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      const tabs = {
+        stepBuilder: { btn: 'tabBtnStepBuilder', panel: 'panelStepBuilder' },
+        practical:   { btn: 'tabBtnPractical',   panel: 'panelPractical' },
+        circuit:     { btn: 'tabBtnCircuit',     panel: 'panelCircuit' },
+        delay:       { btn: 'tabBtnDelay',       panel: 'panelDelay' }
+      };
+
+      Object.keys(tabs).forEach(k => {
+        const btn = document.getElementById(tabs[k].btn);
+        const panel = document.getElementById(tabs[k].panel);
+        if (k === tabName) {
+          panel.classList.remove('hidden');
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-emerald-500 text-slate-950 shadow';
+        } else {
+          panel.classList.add('hidden');
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800/60';
+        }
+      });
+    }
+
+    // --- Simulation Playback Controls ---
+    function stopAnimation() {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+      state.isPlaying = false;
+    }
+
+    function startAnimation() {
+      stopAnimation();
+      state.isPlaying = true;
+      if (state.simStep >= 4) {
+        state.simStep = 0;
+      }
+      renderAll();
+
+      state.timerId = setInterval(() => {
+        if (state.simStep < 4) {
+          state.simStep += 1;
+          renderAll();
+        } else {
+          stopAnimation();
+          renderAll();
+        }
+      }, 850);
+    }
+
+    // --- Attach Event Listeners ---
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('tabBtnStepBuilder').addEventListener('click', () => switchTab('stepBuilder'));
+      document.getElementById('tabBtnPractical').addEventListener('click', () => switchTab('practical'));
+      document.getElementById('tabBtnCircuit').addEventListener('click', () => switchTab('circuit'));
+      document.getElementById('tabBtnDelay').addEventListener('click', () => switchTab('delay'));
+
+      // Step-by-Step Builder Navigation
+      document.getElementById('btnPrevBuildStep').addEventListener('click', () => {
+        state.buildStep = state.buildStep > 1 ? state.buildStep - 1 : 6;
+        renderAll();
+      });
+      document.getElementById('btnNextBuildStep').addEventListener('click', () => {
+        state.buildStep = state.buildStep < 6 ? state.buildStep + 1 : 1;
+        renderAll();
+      });
+
+      document.querySelectorAll('.build-step-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.buildStep = parseInt(btn.getAttribute('data-build-step'), 10);
+          renderAll();
+        });
+      });
+
+      // Stage filter in practical breadboard tab
+      document.querySelectorAll('.wire-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.wireStageFilter = btn.getAttribute('data-wire-stage');
+          renderAll();
+        });
+      });
+
+      // Bit toggle buttons for A and B
+      document.querySelectorAll('.bit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          stopAnimation();
+          const group = btn.getAttribute('data-bit-group');
+          const idx = parseInt(btn.getAttribute('data-bit-index'), 10);
+          state[group][idx] = state[group][idx] ? 0 : 1;
+          state.simStep = 4;
+          renderAll();
+        });
+      });
+
+      // Cin toggle
+      document.getElementById('btnCin').addEventListener('click', () => {
+        stopAnimation();
+        state.Cin = state.Cin ? 0 : 1;
+        state.simStep = 4;
+        renderAll();
+      });
+
+      // Presets
+      document.getElementById('presetSelect').addEventListener('change', e => {
+        stopAnimation();
+        const val = e.target.value;
+        if (val === 'worst1') {
+          state.A = [1, 1, 1, 1];
+          state.B = [0, 0, 0, 0];
+          state.Cin = 1;
+        } else if (val === 'worst2') {
+          state.A = [1, 1, 1, 1];
+          state.B = [1, 0, 0, 0];
+          state.Cin = 0;
+        } else if (val === 'partial') {
+          state.A = [1, 1, 0, 0];
+          state.B = [1, 0, 0, 0];
+          state.Cin = 0;
+        } else if (val === 'generate') {
+          state.A = [1, 0, 1, 0];
+          state.B = [1, 0, 1, 0];
+          state.Cin = 0;
+        } else if (val === 'zero') {
+          state.A = [0, 1, 0, 1];
+          state.B = [1, 0, 1, 0];
+          state.Cin = 0;
+        }
+        state.simStep = 0;
+        startAnimation();
+      });
+
+      // Play/Pause, Step, Reset
+      document.getElementById('btnPlayPause').addEventListener('click', () => {
+        if (state.isPlaying) {
+          stopAnimation();
+          renderAll();
+        } else {
+          startAnimation();
+        }
+      });
+
+      document.getElementById('btnStep').addEventListener('click', () => {
+        stopAnimation();
+        state.simStep = (state.simStep + 1) % 5;
+        renderAll();
+      });
+
+      document.getElementById('btnResetSim').addEventListener('click', () => {
+        stopAnimation();
+        state.simStep = 0;
+        renderAll();
+      });
+
+      // Gate delay slider
+      document.getElementById('gateDelaySlider').addEventListener('input', e => {
+        state.tauNs = parseInt(e.target.value, 10);
+        renderAll();
+      });
+
+      // Stage selector buttons
+      document.querySelectorAll('.fa-select-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedFA = parseInt(btn.getAttribute('data-select-fa'), 10);
+          renderAll();
+        });
+      });
+
+      renderAll();
+    });
+  </script>
+</body>
+</html>
